@@ -1,0 +1,24 @@
+--------sets to 0 the long at setToZeroHere-------
+
+        bitboard &= ~(1L << setToZeroHere);
+
+--------------------------------------------------
+
+
+--------sets to 1 the long at setToOneHere--------
+
+        bitboard |= 1L << setToOneHere
+
+--------------------------------------------------
+
+--------clears the least significant bit----------
+
+        bitboard ^= Long.lowestOneBit(bitboard);
+
+--------------------------------------------------
+
+-------checks if it's 1 at specific bit-----------
+
+if ((enemies & (1L << currentKingCheckedSquare)) != 0)
+
+--------------------------------------------------
