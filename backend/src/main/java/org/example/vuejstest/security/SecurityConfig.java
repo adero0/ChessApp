@@ -11,6 +11,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,17 +33,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/todos").hasRole(Role.USER.name())
-                        .requestMatchers(HttpMethod.POST, "/api/todos").hasRole(Role.USER.name())
-                        .requestMatchers(HttpMethod.DELETE, "/api/todos/**").hasRole(Role.USER.name())
-                        .requestMatchers("/api/queue/**").hasRole(Role.USER.name())
-                        .requestMatchers("/api/chat/**").hasRole(Role.USER.name())
+                        .requestMatchers(HttpMethod.GET, "/api/todos").hasRole(Role.USER.name())//wywal
+                        .requestMatchers(HttpMethod.POST, "/api/todos").hasRole(Role.USER.name())//wywal
+                        .requestMatchers(HttpMethod.DELETE, "/api/todos/**").hasRole(Role.USER.name())//wywal
+                        .requestMatchers("/api/queue/**").hasRole(Role.USER.name())//wywal
+                        .requestMatchers("/api/chat/**").hasRole(Role.USER.name())//wywal
                         .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())
-                        .requestMatchers("api/test/**").permitAll()
+                        .requestMatchers("/api/game/queue/**").permitAll()
+                        .requestMatchers("/api/game/**").permitAll()// zamienic authenticated na permitAll() jeśli działa dla testu
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

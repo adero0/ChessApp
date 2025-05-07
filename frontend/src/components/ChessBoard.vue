@@ -30,6 +30,11 @@
         >
       </div>
     </div>
+    <div class="game-info">
+      <div>Playing as: {{ playerColor }}</div>
+      <div>Opponent: {{ opponentUsername }}</div>
+      <div>Current turn: {{ currentTurn }}</div>
+    </div>
     <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>
     <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>
     <div class="flex items-center justify-center">Material: {{ materialCount }}</div>
@@ -53,6 +58,8 @@ import whiteKnight from '../assets/piecesSVG/white-knight.svg';
 import whiteBishop from '../assets/piecesSVG/white-bishop.svg';
 import whiteQueen from '../assets/piecesSVG/white-queen.svg';
 import whiteKing from '../assets/piecesSVG/white-king.svg';
+import {useAuthStore} from "../stores/auth.js";
+import {useRouter} from "vue-router";
 
 
 const CastlingType = {
@@ -63,10 +70,51 @@ const CastlingType = {
 
 export default {
   mounted() {
-    this.fetchBoard();
-    this.fetchLegalMoves();
+    this.gameId = this.$route.query.gameId;
+    if (this.gameId) {
+      this.startGamePolling();
+    } else {
+      this.fetchBoard();
+      this.fetchLegalMoves();
+    }
+  },
+  setup() {
+    const authStore = useAuthStore();
+    const router = useRouter();
+    return { authStore, router };
   },
   methods: {
+    startGamePolling() {
+      this.pollInterval = setInterval(async () => {
+        try {
+          const response = await axios.get(
+              `http://localhost:8080/api/game/${this.gameId}/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.authStore.token}`
+            }
+          });
+          const status = response.data;
+
+
+          this.fen = status.fen;
+          this.checkmate = status.checkmate;
+          this.checkSquare = status.checkSquare;
+          this.materialCount = status.materialCount;
+          this.playerColor = status.playerColor;
+          this.currentTurn = status.currentTurn;
+          this.opponentUsername = status.opponentUsername.username;
+          this.opponentId = status.opponentId;
+
+          if (status.legalMoves) {
+            this.legalMoves = status.legalMoves;
+          }
+
+        } catch (error) {
+          console.error('Error polling game status:', error);
+        }
+      }, 2000); // Poll every 2 seconds
+    },
     openSuccessCopyToast() {
       this.$toast.open({
         message: "Copied PGN to clipboard",
@@ -94,16 +142,18 @@ export default {
     },
     async fetchBoard() {
       try {
-        const response = await axios.get('http://localhost:8080/api/test');
+        const response = await axios.get('http://localhost:8080/api/game/setup');
         this.fen = response.data;
       } catch (error) {
         console.error('Error fetching FEN:', error);
       }
     },
-
+    beforeUnmount() {
+      clearInterval(this.pollInterval);
+    },
     async fetchLegalMoves() {
       try {
-        const response = await axios.get('http://localhost:8080/api/test/getLegals');
+        const response = await axios.get('http://localhost:8080/api/game/getLegals');
         this.legalMoves = Object.entries(response.data).reduce((acc, [key, value]) => {
           acc[parseInt(key)] = value;
           return acc;
@@ -166,7 +216,7 @@ export default {
       );
 
       try {
-        const response = await axios.post('http://localhost:8080/api/test', {
+        const response = await axios.post('http://localhost:8080/api/game', {
           from: dragInfo.from,
           to: targetSquare,
           piece: dragInfo.piece,
@@ -333,6 +383,12 @@ export default {
       checkSquare: -1,
       lastMove: { from: -1, to: -1 },
       checkmate: false,
+      gameId: null,
+      playerColor: 'white',
+      currentTurn: 'white',
+      opponentUsername: '',
+      pollInterval: null,
+      opponentId: null,
     }
   },
 

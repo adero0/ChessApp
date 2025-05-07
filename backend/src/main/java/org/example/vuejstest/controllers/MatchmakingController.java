@@ -1,6 +1,10 @@
 package org.example.vuejstest.controllers;
 
+import org.example.vuejstest.chessRelated.board.BoardOperator;
+import org.example.vuejstest.chessRelated.util.ChessPositionIntoFENFormat;
 import org.example.vuejstest.models.Message;
+import org.example.vuejstest.models.MoveMade;
+import org.example.vuejstest.models.MoveResponse;
 import org.example.vuejstest.models.User;
 import org.example.vuejstest.repository.UserRepository;
 import org.example.vuejstest.services.MatchmakingService;
@@ -42,8 +46,9 @@ public class MatchmakingController {
         String username = getAuthenticatedUsername();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        log.info("User {} joining queue", username);
         Map<String, Object> result = matchmakingService.joinQueue(user.getId());
+        log.info("User {} joined queue or status {}", username, result);
+        System.out.println("IM ADDED YAY!");
         return ResponseEntity.ok(result);
     }
 
@@ -56,23 +61,37 @@ public class MatchmakingController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/queue/status")
+    public ResponseEntity<Map<String, Object>> getQueueStatus() {
+        Long userId = getUserId();
+        System.out.println("my name is " + userRepository.findById(userId).get().getUsername());
+        System.out.println("checking status");
+        return ResponseEntity.ok(matchmakingService.getQueueStatusForUser(userId));
+    }
+
     @PostMapping("/{gameId}/move")
-    public ResponseEntity<Map<String, Object>> submitMove(
+    public ResponseEntity<MoveResponse> submitMove(
             @PathVariable String gameId,
-            @RequestBody Map<String, Integer> move) {
+            @RequestBody MoveMade move) {
         String username = getAuthenticatedUsername();
+        System.out.println(username);
         log.info("User {} submitting move in game {}", username, gameId);
         return ResponseEntity.ok(matchmakingService.processMove(
                 gameId,
                 getUserId(),
-                move.get("from"),
-                move.get("to")
+                move
         ));
     }
 
+    @GetMapping("/setup")
+    public ResponseEntity<String> setupBoard() {
+        var stuff = BoardOperator.standardBoardStartingPositionOperator().getBoardState();
+        System.out.println(ChessPositionIntoFENFormat.transformIntoFEN(BoardOperator.standardBoardStartingPositionOperator().getBoardState()));
+        return ResponseEntity.ok(ChessPositionIntoFENFormat.transformIntoFEN(stuff));
+    }
+
     @GetMapping("/{gameId}/status")
-    public ResponseEntity<Map<String, Object>> getGameStatus(
-            @PathVariable String gameId) {
+    public ResponseEntity<Map<String, Object>> getGameStatus(@PathVariable String gameId) {
         String username = getAuthenticatedUsername();
         log.info("User {} checking status of game {}", username, gameId);
         return ResponseEntity.ok(matchmakingService.getGameStatus(gameId, getUserId()));

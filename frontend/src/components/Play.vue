@@ -1,16 +1,17 @@
 <template>
   <div class="min-h-screen bg-gray-100 flex items-center justify-center">
     <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md text-center">
-      <h2 class="text-2xl font-bold mb-4 text-gray-800">Play</h2>
+      <textarea>{{status}}</textarea>
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">Szukaj przeciwnika: </h2>
       <button
           v-if="status !== 'paired'"
           @click="joinQueue"
           class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition w-full"
           :disabled="status === 'waiting'"
       >
-        {{ status === 'waiting' ? 'Waiting for match...' : 'Join Queue' }}
+        {{ status === 'waiting' ? 'Czekanie na mecz...' : 'Dołącz do kolejki' }}
       </button>
-      <p v-if="status === 'waiting'" class="mt-4 text-gray-600">Waiting for another player...</p>
+      <p v-if="status === 'waiting'" class="mt-4 text-gray-600">Poczekaj na znaleznie przeciwnika...</p>
     </div>
   </div>
 </template>
@@ -24,7 +25,8 @@ export default {
   data() {
     return {
       status: 'idle',
-      pollInterval: null
+      pollInterval: null,
+      userId: null,
     };
   },
   setup() {
@@ -35,31 +37,47 @@ export default {
   methods: {
     async joinQueue() {
       try {
-        this.status = 'waiting';
-        await this.checkQueueStatus();
-      } catch (error) {
-        console.error('Failed to join queue:', error);
-        this.status = 'idle';
-      }
-    },
-    async checkQueueStatus() {
-      try {
-        const response = await axios.post('http://localhost:8080/api/queue/join', {}, {
+        const response = await axios.post('http://localhost:8080/api/game/queue/join', {}, {
           headers: { Authorization: `Bearer ${this.authStore.token}` }
         });
         if (response.data.status === 'paired') {
           this.status = 'paired';
           clearInterval(this.pollInterval);
-          await this.router.push(`/chat?chatKey=${response.data.chatKey}`);
+          console.log("OPPONENT FOUND ESSA")
+          await this.router.push(`/game?gameId=${response.data.gameId}`);
         } else if (response.data.status === 'waiting' && !this.pollInterval) {
+          this.status = 'waiting'
           this.startPolling();
+          console.log("i do be polling")
         }
       } catch (error) {
+        console.error('Failed to join queue:', error);
+        console.log('We failed in join')
+        this.status = 'idle';
+      }
+    },
+    async checkQueueStatus() {
+      try {
+        const response = await axios.post('http://localhost:8080/api/game/queue/status', {}, {
+          headers: { Authorization: `Bearer ${this.authStore.token}` }
+        });
+        if (response.data.status === 'paired') {
+          this.status = 'paired';
+          clearInterval(this.pollInterval);
+          console.log("OPPONENT FOUND ESSA")
+          await this.router.push(`/game?gameId=${response.data.gameId}`);
+        } else if (response.data.status === 'waiting') {
+        // Just keep polling, no need to restart
+      }
+      } catch (error) {
         console.error('Queue check failed:', error);
+        console.log('Fail in checking status')
         this.status = 'idle';
         clearInterval(this.pollInterval);
       }
     },
+
+
     startPolling() {
       this.pollInterval = setInterval(() => {
         this.checkQueueStatus();

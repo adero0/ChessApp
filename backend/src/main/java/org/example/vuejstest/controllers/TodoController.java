@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+@Deprecated
 @RestController
 @RequestMapping("/api/todos")
 public class TodoController {

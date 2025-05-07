@@ -2,11 +2,11 @@
   <div class="min-h-screen bg-gray-100 flex items-center justify-center">
     <form @submit.prevent="register" class="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
       <h2 class="text-2xl font-bold mb-4 text-gray-800">Register</h2>
-      <input v-model="username" placeholder="Username" class="w-full p-2 mb-4 border rounded" />
-      <input v-model="password" type="password" placeholder="Password" class="w-full p-2 mb-4 border rounded" />
-      <input v-model="repeat_password" type="password" placeholder="Repeat the password" class="w-full p-2 mb-4 border rounded" />
+      <input v-model="username" placeholder="Nazwa użytkownika" class="w-full p-2 mb-4 border rounded" />
+      <input v-model="password" type="password" placeholder="Hasło" class="w-full p-2 mb-4 border rounded" />
+      <input v-model="repeat_password" type="password" placeholder="Powtórz hasło" class="w-full p-2 mb-4 border rounded" />
       <button type="submit" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition">
-        Register
+        Zarejestruj
       </button>
     </form>
   </div>

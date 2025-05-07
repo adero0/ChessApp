@@ -25,8 +25,8 @@ public class BoardState {
     private boolean blackKingMoved = false;
     private int enPassantSquare = -1;
     private int material = 0;
-    boolean whiteKingInCheck = false;
-    boolean blackKingInCheck = false;
+    public boolean whiteKingInCheck = false;
+    public boolean blackKingInCheck = false;
     private final Map<PieceType, Piece> pieceMap;
     private boolean isCheckmate = false;
 

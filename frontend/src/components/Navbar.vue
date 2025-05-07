@@ -2,23 +2,21 @@
   <nav class="bg-gray-800 p-4 shadow-md">
     <div class="max-w-7xl mx-auto flex justify-between items-center">
       <div class="text-white text-2xl font-bold">
-        <router-link to="/">Todo App</router-link>
+        <router-link v-if="authStore.isLoggedIn" to="/main">Szacher</router-link>
+        <router-link v-if="!authStore.isLoggedIn" to="/">Szacher</router-link>
       </div>
-      <div><p v-if="authStore.isLoggedIn" class="text-white"> Hi, {{authStore.username}}!</p></div>
+      <div><p v-if="authStore.isLoggedIn" class="text-white"> Witaj, {{authStore.username}}!</p></div>
       <div class="space-x-4">
 
         <router-link v-if="!authStore.isLoggedIn" to="/login" class="text-gray-300 hover:text-white transition">
-          Login
+          Zaloguj się
         </router-link>
         <router-link v-if="!authStore.isLoggedIn" to="/register" class="text-gray-300 hover:text-white transition">
-          Register
+          Zarejestruj się
         </router-link>
-        <router-link v-if="authStore.isLoggedIn" to="/todos" class="text-gray-300 hover:text-white transition">
-          Todos
-        </router-link>
-        <router-link to="/test" class="text-gray-300 hover:text-white transition"> Test </router-link>
+        <router-link v-if="authStore.isLoggedIn" to="/game" class="text-gray-300 hover:text-white transition"> Test </router-link>
         <button v-if="authStore.isLoggedIn" @click="logout" class="text-gray-300 hover:text-white transition">
-          Logout
+          Wyloguj się
         </button>
       </div>
     </div>

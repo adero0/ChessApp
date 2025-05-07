@@ -11,7 +11,7 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtil {
     private Key secret = Keys.hmacShaKeyFor("your_secret_key_at_least_32_chars_long".getBytes());
-    private int expiration = 86400000/2; // 1 day in milliseconds
+    private int expiration = 86400000*7; // 1 day in milliseconds
 
     public String generateToken(UserDetails userDetails) {
         return Jwts.builder()

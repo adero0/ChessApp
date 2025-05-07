@@ -1,28 +1,22 @@
 <template>
-  <div class="max-w-2xl mx-auto p-4">
-    <h1 class="text-3xl font-bold text-gray-800 mb-4">Todos</h1>
-    <router-link to="/play" class="inline-block mb-4 bg-green-500 text-white p-2 rounded hover:bg-green-600 transition">
-      Play
-    </router-link>
-    <ul class="space-y-2">
-      <li
-          @click="deleteTodo(todo.id)"
-          v-for="todo in todos"
-          :key="todo.id"
-          class="p-3 bg-white rounded shadow hover:bg-gray-100 transition cursor-pointer"
-      >
-        {{ todo.title }}
-      </li>
-    </ul>
-    <form @submit.prevent="addTodo" class="mt-4 flex space-x-2">
-      <input v-model="newTodo" placeholder="New Todo" class="flex-1 p-2 border rounded" />
-      <button type="submit" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">
-        Add
-      </button>
-    </form>
-  </div>
+    <div class="flex flex-col items-center justify-center min-h-screen">
+      <h2 class="text-2xl font-bold mb-8">Zagraj:</h2>
+      <div class="flex gap-10">
+        <div class="flex flex-col items-center">
+          <router-link to="/play" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mb-2">
+            Na gracza
+          </router-link>
+          <span>😎</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <router-link to="/play" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mb-2">
+            Na komputer
+          </router-link>
+          <span>🤖</span>
+        </div>
+      </div>
+    </div>
 </template>
-<!-- Script unchanged except add useRouter to setup() if needed -->
 <script>
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
