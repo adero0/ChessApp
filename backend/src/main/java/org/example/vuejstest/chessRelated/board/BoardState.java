@@ -5,6 +5,7 @@ import org.example.vuejstest.chessRelated.board.pieces.Piece;
 import org.example.vuejstest.chessRelated.enums.CastlingType;
 import org.example.vuejstest.chessRelated.enums.PieceColor;
 import org.example.vuejstest.chessRelated.enums.PieceType;
+import org.example.vuejstest.chessRelated.util.BinaryStringToChessPos;
 
 import java.util.Map;
 
@@ -222,7 +223,7 @@ public class BoardState {
 
     public void castle(CastlingType castlingType, PieceColor pieceColor) {
         int offset = pieceColor == PieceColor.WHITE ? 0 : 56;
-        int rookOffset = pieceColor == PieceColor.WHITE ? 0 : 7;
+        int rookOffset = castlingType == CastlingType.SHORTCASTLE ? 0 : 7;
         int kingPlacement = 3 + offset; //king position + offset
         int rookPlacement = offset + rookOffset;
 
@@ -236,13 +237,16 @@ public class BoardState {
 
         Piece rook = pieceMap.get(PieceType.ROOK);
         rook.setBitboard((rook.getBitboard() & rookDelete) | rookAdd);
+        System.out.println(BinaryStringToChessPos.bitboardToChessPos(rook.getBitboard()));
         Piece king = pieceMap.get(PieceType.KING);
         king.setBitboard((king.getBitboard() & kingDelete) | kingAdd);
+        System.out.println(BinaryStringToChessPos.bitboardToChessPos(king.getBitboard()));
 
         setColorBitboard(
                 pieceColor,
                 (getColorBitboard(pieceColor) & rookDelete & kingDelete) | kingAdd | rookAdd
         );
+        System.out.println(BinaryStringToChessPos.bitboardToChessPos(getColorBitboard(pieceColor)));
     }
 
     public void makeMove(int from, int to, PieceType pieceType, PieceColor pieceColor) {
@@ -257,9 +261,9 @@ public class BoardState {
         if (pieceType == PieceType.PAWN) {
             pieceBitboard = ((Pawn) piece).getColorBitboard(pieceColor);
             if (to == enPassantSquare) {
-                long thing = ~(1L << to + (opponentColor == PieceColor.BLACK ? -8 : +8)); // TODO co to jest???
-                long opponentBitboardAfterEnPassant = ((Pawn) piece).getColorBitboard(opponentColor) & ~(1L << to - 8);
-                setColorBitboard(opponentColor, getColorBitboard(opponentColor) & ~(1L << to - 8));
+                long captureForwardsOrBackwards = opponentColor == PieceColor.BLACK ? -8 : 8; // TODO co to jest???
+                long opponentBitboardAfterEnPassant = ((Pawn) piece).getColorBitboard(opponentColor) & ~(1L << to + captureForwardsOrBackwards);
+                setColorBitboard(opponentColor, getColorBitboard(opponentColor) & ~(1L << to + captureForwardsOrBackwards));
                 setPieceBitboard(piece, opponentBitboardAfterEnPassant, opponentColor);
             }
             enPassantSquare = -1;
@@ -358,20 +362,17 @@ public class BoardState {
         setPieceBitboard(pm, newQueenBitboard, pieceColor);
     }
 
-    public static void main(String[] args) {
-        BoardOperator gm = BoardOperator.standardBoardStartingPositionOperator();
-        var bs = gm.getBoardState();
-        System.out.println(gm.getLegalMoves());
-        bs.makeMove(11, 27, PAWN, PieceColor.WHITE);
-        System.out.println(gm.getLegalMoves());
-    }
-
-
     public boolean isCheckmate() {
         return isCheckmate;
     }
 
     public void setCheckmate(boolean checkmate) {
         isCheckmate = checkmate;
+    }
+
+    public static void main(String[] args) {
+        BoardOperator gm = BoardOperator.standardBoardStartingPositionOperator();
+        var bs = gm.getBoardState();
+        bs.castle(CastlingType.LONGCASTLE, PieceColor.WHITE);
     }
 }

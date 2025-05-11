@@ -3,7 +3,11 @@ package org.example.vuejstest.services;
 import org.example.vuejstest.chessRelated.board.BoardOperator;
 import org.example.vuejstest.chessRelated.board.BoardState;
 import org.example.vuejstest.chessRelated.enums.CastlingType;
+import org.example.vuejstest.chessRelated.enums.PieceColor;
 import org.example.vuejstest.chessRelated.enums.PieceType;
+import org.example.vuejstest.chessRelated.util.BinaryStringToChessPos;
+import org.example.vuejstest.chessRelated.util.ChessPositionIntoFENFormat;
+import org.example.vuejstest.chessRelated.util.NotationToBitboardConverter;
 import org.example.vuejstest.models.GameSession;
 import org.example.vuejstest.models.MoveMade;
 import org.example.vuejstest.models.MoveResponse;
@@ -45,12 +49,12 @@ public class MatchmakingService {
     }
 
     public synchronized Map<String, Object> joinQueue(Long userId) {
-
         if (playerToGameMap.containsKey(userId)) {
             return Map.of("status", "paired", "gameId", playerToGameMap.get(userId));
         }
         if (!waitingQueue.contains(userId)) {
             waitingQueue.add(userId);
+            System.out.println(waitingQueue);
         }
         return attemptPairing(userId);
     }
@@ -64,9 +68,10 @@ public class MatchmakingService {
         if (waitingQueue.size() >= 2) {
 
             Long player1 = waitingQueue.poll();
-            Long player2 = userId;
+            Long player2 = waitingQueue.poll();
+            if(!player2.equals(userId)){throw new RuntimeException("smth wrong bruv");}
 
-            if (player1.equals(player2)) {
+            if (player1.equals(player2)) { //todo tf is this?
                 waitingQueue.add(player1);
                 return Map.of("status", "waiting");
             }
@@ -92,6 +97,25 @@ public class MatchmakingService {
                 .blackPlayerId(player2)
                 .boardOperator(BoardOperator.standardBoardStartingPositionOperator())
                 .status(GameStatus.ONGOING)
+                .lastMoveMade()
+                .set0TurnCounter()
+                .gameNotation()
+                .build();
+    }
+
+    private GameSession createNewBotGame(Long playerId, PieceColor playerColor) {
+        long botId = -1;
+        Long whitePlayer = playerColor == PieceColor.WHITE ? playerId : botId;
+        Long blackPlayer = playerColor == PieceColor.BLACK ? playerId : botId;
+        return new GameSession.Builder()
+                .gameId(generateUniqueGameId())
+                .whitePlayerId(whitePlayer)
+                .blackPlayerId(blackPlayer)
+                .boardOperator(BoardOperator.standardBoardStartingPositionOperator())
+                .status(GameStatus.ONGOING)
+                .lastMoveMade()
+                .set0TurnCounter()
+                .gameNotation()
                 .build();
     }
 
@@ -120,20 +144,31 @@ public class MatchmakingService {
                     );
         }
         var legalMoves = gameManager.getLegalMoves();
-        System.out.println(legalMoves);
         if(boardState.isKingInCheck()){
             enemyKingCheckSquare = Long.numberOfTrailingZeros(
                     boardState.getColorBitboard(boardState.getCurrentPlayerTurn()) & boardState.getPieceMap().get(PieceType.KING).getBitboard()
             );
         }
-        return new MoveResponse(
-                        legalMoves,
-                        gameManager.getCastlingRights(),
-                        boardState.getMaterial(),
-                        boardState.getEnPassantSquare(),
-                        enemyKingCheckSquare,
-                        boardState.isCheckmate()
-                );
+        game.setLastMoveMade(moveRequest);
+        var info = new MoveResponse(
+                legalMoves,
+                gameManager.getCastlingRights(),
+                boardState.getMaterial(),
+                boardState.getEnPassantSquare(),
+                enemyKingCheckSquare,
+                boardState.isCheckmate()
+        );
+        game.incrementTurnCounter();
+        if(game.getTurnCounter() % 2 == 0){
+            game.updatePgnNotation(" " + game.getTurnCounter()/2 + ". ");
+        }
+        game.updatePgnNotation(
+                " " + NotationToBitboardConverter.chessPositionIntegerToSquare(moveRequest.getFrom()) +
+                        NotationToBitboardConverter.chessPositionIntegerToSquare(moveRequest.getTo())
+        );
+
+
+        return info;
     }
     public Map<String, Object> getQueueStatusForUser(Long userId) {
         if (playerToGameMap.containsKey(userId)) {
@@ -165,6 +200,8 @@ public class MatchmakingService {
         return Map.ofEntries(
                 Map.entry("gameId", gameId),
                 Map.entry("status", game.getStatus()),
+                Map.entry("fen", ChessPositionIntoFENFormat.transformIntoFEN(board.getBoardState())),
+                Map.entry("lastMove", game.getLastMoveMade()),
                 Map.entry("currentTurn", boardState.getCurrentPlayerTurn()),
                 Map.entry("playerColor", game.getPlayerColorFromId(userId)),
                 Map.entry("opponentUsername", userRepository.findById(game.getOpponentColorFromId(userId)).orElseThrow(() -> new RuntimeException("user not found somehow wtf"))),
@@ -172,6 +209,7 @@ public class MatchmakingService {
                 Map.entry("isBlackInCheck", boardState.blackKingInCheck),
                 Map.entry("checkSquare", checkSquare),
                 Map.entry("isCheckmate", boardState.isCheckmate()),
+                Map.entry("pgn", game.getPgnNotation()),
                 Map.entry("legalMoves", game.isPlayersTurn(userId) ?
                         board.getLegalMoves() :
                         Collections.emptyMap()),
@@ -183,6 +221,16 @@ public class MatchmakingService {
         GameSession game = getGameSession(gameId);
         game.getPlayerColorFromId(userId);
         game.setStatus(GameStatus.getProperCheckmate(game.getPlayerColorFromId(userId).getOpposite()));
+        game.getBoardOperator().getBoardState().setCheckmate(true);
         return getGameStatus(gameId, userId);
+    }
+
+    public Map<String, Object> joinBotGame(Long playerId, PieceColor color) {
+        GameSession game = createNewBotGame(playerId, color);
+        activeGames.put(game.getGameId(), game);
+        playerToGameMap.put(playerId, game.getGameId());
+        return Map.of(
+                "gameId", game.getGameId()
+        );
     }
 }

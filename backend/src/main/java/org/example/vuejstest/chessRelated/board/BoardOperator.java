@@ -26,7 +26,6 @@ public class BoardOperator {
 
     public static BoardOperator standardBoardStartingPositionOperator() {
         return new BoardOperator(new BoardState(new BoardBuilder().buildStandardBoard()));
-        //.removePiece(9, PAWN).removePiece(8, PAWN)
     }
 
 
@@ -137,5 +136,9 @@ public class BoardOperator {
             }
         }
         return rights;
+    }
+
+    public static void main(String[] args) {
+
     }
 }

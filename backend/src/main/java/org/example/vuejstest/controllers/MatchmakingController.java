@@ -1,6 +1,7 @@
 package org.example.vuejstest.controllers;
 
 import org.example.vuejstest.chessRelated.board.BoardOperator;
+import org.example.vuejstest.chessRelated.enums.PieceColor;
 import org.example.vuejstest.chessRelated.util.ChessPositionIntoFENFormat;
 import org.example.vuejstest.models.Message;
 import org.example.vuejstest.models.MoveMade;
@@ -74,27 +75,20 @@ public class MatchmakingController {
             @PathVariable String gameId,
             @RequestBody MoveMade move) {
         String username = getAuthenticatedUsername();
-        System.out.println(username);
-        log.info("User {} submitting move in game {}", username, gameId);
-        return ResponseEntity.ok(matchmakingService.processMove(
+        var thingMove = matchmakingService.processMove(
                 gameId,
                 getUserId(),
                 move
-        ));
-    }
-
-    @GetMapping("/setup")
-    public ResponseEntity<String> setupBoard() {
-        var stuff = BoardOperator.standardBoardStartingPositionOperator().getBoardState();
-        System.out.println(ChessPositionIntoFENFormat.transformIntoFEN(BoardOperator.standardBoardStartingPositionOperator().getBoardState()));
-        return ResponseEntity.ok(ChessPositionIntoFENFormat.transformIntoFEN(stuff));
+        );
+        return ResponseEntity.ok(thingMove);
     }
 
     @GetMapping("/{gameId}/status")
     public ResponseEntity<Map<String, Object>> getGameStatus(@PathVariable String gameId) {
         String username = getAuthenticatedUsername();
-        log.info("User {} checking status of game {}", username, gameId);
-        return ResponseEntity.ok(matchmakingService.getGameStatus(gameId, getUserId()));
+//        log.info("User {} checking status of game {}", username, gameId);
+        var thing = matchmakingService.getGameStatus(gameId, getUserId());
+        return ResponseEntity.ok(thing);
     }
 
     @PostMapping("/{gameId}/resign")
@@ -104,5 +98,14 @@ public class MatchmakingController {
         log.info("User {} resigning from game {}", username, gameId);
         return ResponseEntity.ok(matchmakingService.resignGame(gameId, getUserId()));
     }
+
+    @PostMapping("/bot_game/join")
+    public ResponseEntity<Map<String, Object>> joinBotGame(@RequestBody String color) {
+        String username = getAuthenticatedUsername();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            return ResponseEntity.ok(matchmakingService.joinBotGame(user.getId(), PieceColor.valueOf(color)));
+    }
+
 
 }

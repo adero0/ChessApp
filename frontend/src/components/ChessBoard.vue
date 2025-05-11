@@ -1,5 +1,17 @@
 <template>
-  <div class="chess-board">
+  <div class="chess-container">
+  <div class="game-info">
+<!--    <div>Playing as: {{ playerColor }}</div>-->
+<!--    <div>Opponent: {{ opponentUsername }}</div>-->
+<!--    <div>Current turn: {{ currentTurn }}</div>-->
+    <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>
+    <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>
+    <div class="flex items-center justify-center">Material: {{ materialCount }}</div>
+    <div class="flex items-center justify-center"><button class="w-full max-w-xs break-words text-center px-4 py-2" @click="copyPgnToClipboard">{{ pgn }}</button></div>
+  </div>
+
+  <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
+    <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded" v-bind:class="{'rotatore': playerColor === 'BLACK'}" v-if="isMyTurn"> Twoja kolej!</div>
     <div v-if="checkmate" class="game-over-overlay">
       <div class="game-over-message">GAME OVER</div>
     </div>
@@ -30,15 +42,13 @@
         >
       </div>
     </div>
-    <div class="game-info">
-      <div>Playing as: {{ playerColor }}</div>
-      <div>Opponent: {{ opponentUsername }}</div>
-      <div>Current turn: {{ currentTurn }}</div>
-    </div>
-    <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>
-    <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>
-    <div class="flex items-center justify-center">Material: {{ materialCount }}</div>
-    <div class="flex items-center justify-center"><button class="w-full max-w-xs break-words text-center px-4 py-2" @click="copyPgnToClipboard">{{ pgn }}</button></div>
+  </div>
+  <button
+      @click="confirmResignation"
+      class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow hover:shadow-md transition duration-200 flex"
+  >
+    Poddaj partię
+  </button>
   </div>
 </template>
 
@@ -73,9 +83,13 @@ export default {
     this.gameId = this.$route.query.gameId;
     if (this.gameId) {
       this.startGamePolling();
-    } else {
+      console.log("this is even worse");
+    } else if(this.$route.path.includes('/bot_game')) {
+      console.log("this is good");
       this.fetchBoard();
       this.fetchLegalMoves();
+    } else {
+      console.log("this is bad");
     }
   },
   setup() {
@@ -84,6 +98,21 @@ export default {
     return { authStore, router };
   },
   methods: {
+    confirmResignation() {
+      if (confirm("Czy napewno poddać partię?")) {
+        this.resignGame();
+      }
+    },
+    resignGame() {
+      try {
+        const response = axios.post(`http://localhost:8080/api/game/${this.gameId}/resign`,{},{
+          headers: {
+            Authorization: `Bearer ${this.authStore.token}`
+          }});
+      } catch(error){
+        console.log("error in resign", error)
+      }
+      },
     startGamePolling() {
       this.pollInterval = setInterval(async () => {
         try {
@@ -96,12 +125,39 @@ export default {
           });
           const status = response.data;
 
+          if (status.lastMove) {
+            this.serverFen = status.fen;
+            this.localFen = status.fen;
+            this.lastMove = {
+              from: status.lastMove.from,
+              to: status.lastMove.to
+            };
+          }
 
-          this.fen = status.fen;
-          this.checkmate = status.checkmate;
+          if (!this.serverFen) {
+            this.serverFen = status.fen;
+            this.localFen = status.fen;
+          } else {
+            this.serverFen = status.fen;
+          }
+
+
+          this.playerColor = status.playerColor;
+          this.isMyTurn = status.currentTurn === this.playerColor;
+
+          if (!this.isMyTurn) {
+            this.localFen = this.serverFen; // Sync to server state when not our turn
+          }
+          this.pgn = status.pgn;
+
+          if (status.isCheckmate) {
+            this.checkmate = status.isCheckmate;
+            this.pgn+='#';
+            clearInterval(this.pollInterval); }
+
+
           this.checkSquare = status.checkSquare;
           this.materialCount = status.materialCount;
-          this.playerColor = status.playerColor;
           this.currentTurn = status.currentTurn;
           this.opponentUsername = status.opponentUsername.username;
           this.opponentId = status.opponentId;
@@ -190,7 +246,12 @@ export default {
     },
 
     async handleDrop(event, targetSquare) {
+      if (!this.isMyTurn) {
+        event.preventDefault();
+        return;
+      }
       event.preventDefault();
+      const prevFen = this.localFen;
       const dragInfo = JSON.parse(event.dataTransfer.getData('text/plain'));
       if (!this.legalDrags.includes(targetSquare)) return;
 
@@ -207,30 +268,26 @@ export default {
         }
       }
 
-      this.fen = this.applyMoveToFEN(
-          dragInfo.originalFEN,
-          dragInfo.from,
-          targetSquare,
-          dragInfo.piece,
-          castlingType
-      );
+      this.localFen = this.applyMoveToFEN(prevFen, dragInfo.from, targetSquare, dragInfo.piece, castlingType);
 
       try {
-        const response = await axios.post('http://localhost:8080/api/game', {
+        const response = await axios.post(`http://localhost:8080/api/game/${this.gameId}/move`, {
           from: dragInfo.from,
-          to: targetSquare,
-          piece: dragInfo.piece,
-          castlingType: castlingType
-        });
+              to: targetSquare,
+              piece: dragInfo.piece,
+              castlingType: castlingType
+        }, {
+          headers: {
+            Authorization: `Bearer ${this.authStore.token}`
+          }});
+        this.serverFen = response.data.fen;
         this.turnCounter++;
 
-        this.checkmate = response.data.checkmate;
+        this.checkmate = response.data.isCheckmate;
         console.log(this.checkmate + " it is in fact this about checkmate");
 
+
         this.lastMove = { from: dragInfo.from, to: targetSquare };
-        if(this.turnCounter%2 === 0){this.pgn += this.turnCounter/2 + "."}
-        this.pgn += " " + this.chessPositionIntegerToSquare(dragInfo.from) + this.chessPositionIntegerToSquare(targetSquare) + this.promotionPgnAnnotation;
-        if(this.turnCounter%2 !== 0){this.pgn += "\n";}
 
         this.checkSquare = response.data.enemyKingInCheck;
         this.legalMoves = response.data.legalMoves;
@@ -240,7 +297,7 @@ export default {
         this.materialCount = response.data.materialImbalance;
       } catch (error) {
         console.error('Move failed:', error);
-        this.fen = dragInfo.originalFEN;
+        this.localFen = prevFen;
       }
     },
 
@@ -330,6 +387,10 @@ export default {
     },
 
     showLegalMoves(square) {
+      if (!this.isMyTurn) {
+        this.highlightedSquares = [];
+        return;
+      }
       const currentTurn = this.fen.split(' ')[1];
       const pieceData = this.board.flat().find(s => s.square === square);
 
@@ -389,14 +450,17 @@ export default {
       opponentUsername: '',
       pollInterval: null,
       opponentId: null,
+      localFen: '',
+      serverFen: '',
+      isMyTurn: false,
     }
   },
 
   computed: {
     board() {
-      if (!this.fen) return [];
+      const whichFen = this.isMyTurn ? this.localFen : this.serverFen;
       try {
-        const fenPosition = this.fen.split(' ')[0];
+        const fenPosition = whichFen.split(' ')[0];
         const ranks = fenPosition.split('/');
         return ranks.map((rank, i) => {
           const expanded = rank.replace(/\d/g, num => '-'.repeat(num));
@@ -430,6 +494,7 @@ export default {
   z-index: 1000;
 }
 .game-over-message {
+
   color: white;
   font-size: 5rem;
   font-weight: bold;
@@ -441,8 +506,9 @@ export default {
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
-.game-over {
+.game-over.flipped {
   pointer-events: none;
+  transform: rotate(180deg);
 }
 
 .last-move::after {
@@ -516,5 +582,25 @@ export default {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1;
+}
+
+.chess-board.flipped {
+  transform: rotate(180deg);
+}
+
+.chess-board.flipped .row {
+  //flex-direction: row-reverse;
+}
+
+.piece {
+  transition: transform 0.3s;
+}
+
+.chess-board.flipped .piece {
+  transform: rotate(180deg);
+}
+
+.rotatore {
+  transform: rotate(180deg);
 }
 </style>

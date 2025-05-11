@@ -7,6 +7,7 @@ import Chat from '../components/Chat.vue';
 import ChessBoard from "../components/ChessBoard.vue";
 import NotFound from "../components/NotFound.vue";
 import MainScreen from "../components/MainScreen.vue";
+import PlayAI from "../components/PlayAI.vue";
 
 const routes = [
     { path: '/', component: Guest },
@@ -15,7 +16,9 @@ const routes = [
     { path: '/main', component: MainScreen, meta: { requiresAuth: true } },
     { path: '/play', component: Play, meta: { requiresAuth: true } },
     { path: '/chat', component: Chat, meta: { requiresAuth: true } },
+    { path: '/game/bot_game', component: ChessBoard, meta: {requiresAuth: true } },
     { path: '/game', component: ChessBoard, meta: {requiresAuth: true } },
+    { path: '/playAI', component: PlayAI, meta: {requiresAuth: true } },
     {
         path: '/:pathMatch(.*)*',
         component: NotFound,

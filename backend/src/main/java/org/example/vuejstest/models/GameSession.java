@@ -1,6 +1,7 @@
 package org.example.vuejstest.models;
 
 import org.example.vuejstest.chessRelated.board.BoardOperator;
+import org.example.vuejstest.chessRelated.enums.CastlingType;
 import org.example.vuejstest.chessRelated.enums.PieceColor;
 import org.example.vuejstest.models.enums.GameStatus;
 
@@ -10,6 +11,17 @@ public class GameSession {
     private Long blackPlayerId;
     private BoardOperator boardOperator;
     private GameStatus status;
+    private MoveMade lastMoveMade;
+    private StringBuilder pgnNotation;
+    private int turnCounter;
+
+    public MoveMade getLastMoveMade() {
+        return lastMoveMade;
+    }
+
+    public void setLastMoveMade(MoveMade lastMoveMade) {
+        this.lastMoveMade = lastMoveMade;
+    }
 
     public boolean isPlayersTurn(Long playerId) {
         return (isWhiteTurn() && playerId.equals(whitePlayerId)) ||
@@ -49,6 +61,30 @@ public class GameSession {
         this.status = status;
     }
 
+    public String getPgnNotation() {
+        return pgnNotation.toString();
+    }
+
+    public void setPgnNotation(String pgnNotation) {
+        this.pgnNotation = new StringBuilder(pgnNotation);
+    }
+
+    public void updatePgnNotation(String toAdd) {
+        this.pgnNotation.append(toAdd);
+    }
+
+    public void incrementTurnCounter() {
+        this.turnCounter++;
+    }
+
+    public int getTurnCounter() {
+        return turnCounter;
+    }
+
+    public void setTurnCounter(int turnCounter) {
+        this.turnCounter = turnCounter;
+    }
+
     public static class Builder {
         private final GameSession session;
 
@@ -58,6 +94,21 @@ public class GameSession {
 
         public Builder gameId(String gameId) {
             session.gameId = gameId;
+            return this;
+        }
+
+        public Builder lastMoveMade() {
+            var moveMade = new MoveMade();
+            moveMade.setFrom(0);
+            moveMade.setTo(0);
+            moveMade.setPiece(null);
+            moveMade.setCastlingType(CastlingType.NOCASTLE);
+            session.setLastMoveMade(moveMade);
+            return this;
+        }
+
+        public Builder gameNotation() {
+            session.setPgnNotation("");
             return this;
         }
 
@@ -78,6 +129,11 @@ public class GameSession {
 
         public Builder status(GameStatus status) {
             session.status = status;
+            return this;
+        }
+
+        public Builder set0TurnCounter() {
+            session.turnCounter = 1;
             return this;
         }
 

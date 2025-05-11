@@ -1,7 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-100 flex items-center justify-center">
     <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md text-center">
-      <textarea>{{status}}</textarea>
       <h2 class="text-2xl font-bold mb-4 text-gray-800">Szukaj przeciwnika: </h2>
       <button
           v-if="status !== 'paired'"
