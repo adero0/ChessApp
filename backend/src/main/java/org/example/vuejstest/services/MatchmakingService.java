@@ -5,7 +5,6 @@ import org.example.vuejstest.chessRelated.board.BoardState;
 import org.example.vuejstest.chessRelated.enums.CastlingType;
 import org.example.vuejstest.chessRelated.enums.PieceColor;
 import org.example.vuejstest.chessRelated.enums.PieceType;
-import org.example.vuejstest.chessRelated.util.BinaryStringToChessPos;
 import org.example.vuejstest.chessRelated.util.ChessPositionIntoFENFormat;
 import org.example.vuejstest.chessRelated.util.NotationToBitboardConverter;
 import org.example.vuejstest.models.GameSession;
@@ -14,7 +13,6 @@ import org.example.vuejstest.models.MoveResponse;
 import org.example.vuejstest.models.enums.GameStatus;
 import org.example.vuejstest.repository.UserRepository;
 import org.example.vuejstest.security.GameIdGenerator;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -69,7 +67,9 @@ public class MatchmakingService {
 
             Long player1 = waitingQueue.poll();
             Long player2 = waitingQueue.poll();
-            if(!player2.equals(userId)){throw new RuntimeException("smth wrong bruv");}
+            if (!player2.equals(userId)) {
+                throw new RuntimeException("smth wrong bruv");
+            }
 
             if (player1.equals(player2)) { //todo tf is this?
                 waitingQueue.add(player1);
@@ -125,14 +125,16 @@ public class MatchmakingService {
 
     public MoveResponse processMove(String gameId, Long userId, MoveMade moveRequest) {
         GameSession game = getGameSession(gameId);
-        if (!game.isPlayersTurn(userId)) { throw new RuntimeException("This is not this players' turn");}
+        if (!game.isPlayersTurn(userId)) {
+            throw new RuntimeException("This is not this players' turn");
+        }
 
         var gameManager = game.getBoardOperator();
         var boardState = gameManager.getBoardState();
 
         int enemyKingCheckSquare = -1;
 
-        if (moveRequest.getCastlingType() != CastlingType.NOCASTLE){
+        if (moveRequest.getCastlingType() != CastlingType.NOCASTLE) {
             boardState.castle(moveRequest.getCastlingType(), boardState.getAndChangeCurrentPlayerTurn());
         } else {
             gameManager.getBoardState().makeMove
@@ -144,7 +146,7 @@ public class MatchmakingService {
                     );
         }
         var legalMoves = gameManager.getLegalMoves();
-        if(boardState.isKingInCheck()){
+        if (boardState.isKingInCheck()) {
             enemyKingCheckSquare = Long.numberOfTrailingZeros(
                     boardState.getColorBitboard(boardState.getCurrentPlayerTurn()) & boardState.getPieceMap().get(PieceType.KING).getBitboard()
             );
@@ -159,8 +161,8 @@ public class MatchmakingService {
                 boardState.isCheckmate()
         );
         game.incrementTurnCounter();
-        if(game.getTurnCounter() % 2 == 0){
-            game.updatePgnNotation(" " + game.getTurnCounter()/2 + ". ");
+        if (game.getTurnCounter() % 2 == 0) {
+            game.updatePgnNotation(" " + game.getTurnCounter() / 2 + ". ");
         }
         game.updatePgnNotation(
                 " " + NotationToBitboardConverter.chessPositionIntegerToSquare(moveRequest.getFrom()) +
@@ -170,6 +172,7 @@ public class MatchmakingService {
 
         return info;
     }
+
     public Map<String, Object> getQueueStatusForUser(Long userId) {
         if (playerToGameMap.containsKey(userId)) {
             return Map.of(
@@ -182,7 +185,7 @@ public class MatchmakingService {
         return attemptPairing(userId);
     }
 
-    public int getWaitingQueueLength(){
+    public int getWaitingQueueLength() {
         return waitingQueue.size();
     }
 
@@ -191,7 +194,7 @@ public class MatchmakingService {
         BoardOperator board = game.getBoardOperator();
         BoardState boardState = board.getBoardState();
         int checkSquare = -1;
-        if(boardState.isKingInCheck()){
+        if (boardState.isKingInCheck()) {
             checkSquare = Long.numberOfTrailingZeros(
                     boardState.getColorBitboard(boardState.getCurrentPlayerTurn()) & boardState.getPieceMap().get(PieceType.KING).getBitboard()
             );
@@ -231,6 +234,15 @@ public class MatchmakingService {
         playerToGameMap.put(playerId, game.getGameId());
         return Map.of(
                 "gameId", game.getGameId()
+        );
+    }
+
+    public Map<String, Object> getBotGameSetup(String gameId, Long userId) {
+        GameSession game = getGameSession(gameId);
+        return Map.ofEntries(
+                Map.entry("playerColor", game.getPlayerColorFromId(userId)),
+                Map.entry("legalMoves", game.getBoardOperator().getLegalMoves()),
+                Map.entry("fen", ChessPositionIntoFENFormat.transformIntoFEN(game.getBoardOperator().getBoardState()))
         );
     }
 }

@@ -81,15 +81,15 @@ const CastlingType = {
 export default {
   mounted() {
     this.gameId = this.$route.query.gameId;
-    if (this.gameId) {
-      this.startGamePolling();
-      console.log("this is even worse");
-    } else if(this.$route.path.includes('/bot_game')) {
-      console.log("this is good");
-      this.fetchBoard();
-      this.fetchLegalMoves();
+    const isBotGame = this.$route.path.includes('/bot_game');
+    if(isBotGame) {
+      this.difficulty = this.$route.query.difficulty;
+      this.getLegalsOrMakeBotMove();
+    }
+    else if (this.gameId) {
+        this.startGamePolling();
     } else {
-      console.log("this is bad");
+      console.error("this is pretty bad")
     }
   },
   setup() {
@@ -196,6 +196,11 @@ export default {
       square_name += Math.floor(square / 8 + 1);
       return square_name;
     },
+    chessPositionSquareToInteger(square_character) {
+      let number = 104 - square_character.charCodeAt(0);
+      number += ( square_character.charAt(1) - 1 ) * 8 - 1
+      return number;
+    },
     async fetchBoard() {
       try {
         const response = await axios.get('http://localhost:8080/api/game/setup');
@@ -207,16 +212,46 @@ export default {
     beforeUnmount() {
       clearInterval(this.pollInterval);
     },
-    async fetchLegalMoves() {
+    async getLegalsOrMakeBotMove() {
       try {
-        const response = await axios.get('http://localhost:8080/api/game/getLegals');
-        this.legalMoves = Object.entries(response.data).reduce((acc, [key, value]) => {
-          acc[parseInt(key)] = value;
-          return acc;
-        }, {});
+        const response = await axios.get(`http://localhost:8080/api/game/bot_game/${this.gameId}/setup`,
+            {
+              headers: {
+                Authorization: `Bearer ${this.authStore.token}`
+              }
+            });
+        console.log("im here :)")
+        this.playerColor = response.data.playerColor;
+        this.fen = response.data.fen;
+        if(this.playerColor !== this.currentTurn) {
+          await this.getAndPlayStockfishMove();
+        }
+        // this.legalMoves = Object.entries(response.data).reduce((acc, [key, value]) => {
+        //   acc[parseInt(key)] = value;
+        //   return acc;
+        // }, {});
       } catch (error) {
         console.error('Error getting legal moves:', error);
       }
+    },
+
+    async getAndPlayStockfishMove() {
+      await this.getStockfishMoves();
+      console.log("at least smth works")
+    },
+
+    async getStockfishMoves(){
+      try{
+        const response = await axios.get('https://stockfish.online/api/s/v2.php', {
+          params: {
+            fen: this.fen,
+            depth: this.difficulty
+          }});
+        const from = this.chessPositionSquareToInteger(response.data.bestmove.substring(9, 11));
+        const to = this.chessPositionSquareToInteger(response.data.bestmove.substring(11, 13));
+        console.log(from + " " + to);
+      } catch (error) {
+        console.error('Stockfish request failed', error);}
     },
 
     handleDragStart(squareData, event) {
@@ -453,6 +488,7 @@ export default {
       localFen: '',
       serverFen: '',
       isMyTurn: false,
+      difficulty: null,
     }
   },
 

@@ -121,7 +121,7 @@ export default {
           'Content-Type': 'text/plain'
         }
       });
-      this.$router.push(`/game/bot_game?gameId=${response.data.gameId}`);
+      this.$router.push(`/game/bot_game?gameId=${response.data.gameId}&difficulty=${this.selectedDifficulty}`);
     }
   }
 }

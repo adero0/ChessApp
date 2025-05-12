@@ -1,9 +1,6 @@
 package org.example.vuejstest.controllers;
 
-import org.example.vuejstest.chessRelated.board.BoardOperator;
 import org.example.vuejstest.chessRelated.enums.PieceColor;
-import org.example.vuejstest.chessRelated.util.ChessPositionIntoFENFormat;
-import org.example.vuejstest.models.Message;
 import org.example.vuejstest.models.MoveMade;
 import org.example.vuejstest.models.MoveResponse;
 import org.example.vuejstest.models.User;
@@ -15,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -101,10 +97,25 @@ public class MatchmakingController {
 
     @PostMapping("/bot_game/join")
     public ResponseEntity<Map<String, Object>> joinBotGame(@RequestBody String color) {
-        String username = getAuthenticatedUsername();
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-            return ResponseEntity.ok(matchmakingService.joinBotGame(user.getId(), PieceColor.valueOf(color)));
+        Long userId = getUserId();
+        return ResponseEntity.ok(matchmakingService.joinBotGame(userId, PieceColor.valueOf(color)));
+    }
+
+    //once at the start for bot games
+    @GetMapping("/bot_game/{gameId}/setup")
+    public ResponseEntity<Map<String, Object>> setupBotGame(@PathVariable String gameId) {
+        Long userId = getUserId();
+        System.out.println("I reached this");
+        return ResponseEntity.ok(matchmakingService.getBotGameSetup(gameId, userId));
+    }
+
+    @PostMapping("/bot_game/{gameId}/move")
+    public ResponseEntity<MoveResponse> moveInBotGame(
+            @PathVariable String gameId,
+            @RequestBody MoveMade move
+    ) {
+        Long userId = getUserId();
+        return ResponseEntity.ok(matchmakingService.processBotMove(gameId, move));
     }
 
 
