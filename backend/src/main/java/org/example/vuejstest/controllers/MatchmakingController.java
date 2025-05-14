@@ -67,10 +67,9 @@ public class MatchmakingController {
     }
 
     @PostMapping("/{gameId}/move")
-    public ResponseEntity<MoveResponse> submitMove(
+    public ResponseEntity<Map<String, Object>> submitMove(
             @PathVariable String gameId,
             @RequestBody MoveMade move) {
-        String username = getAuthenticatedUsername();
         var thingMove = matchmakingService.processMove(
                 gameId,
                 getUserId(),
@@ -105,16 +104,14 @@ public class MatchmakingController {
     @GetMapping("/bot_game/{gameId}/setup")
     public ResponseEntity<Map<String, Object>> setupBotGame(@PathVariable String gameId) {
         Long userId = getUserId();
-        System.out.println("I reached this");
         return ResponseEntity.ok(matchmakingService.getBotGameSetup(gameId, userId));
     }
 
-    @PostMapping("/bot_game/{gameId}/move")
-    public ResponseEntity<MoveResponse> moveInBotGame(
+    @PostMapping("/bot_game/bot_move/{gameId}/move")
+    public ResponseEntity<Map<String, Object>> moveInBotGame(
             @PathVariable String gameId,
             @RequestBody MoveMade move
     ) {
-        Long userId = getUserId();
         return ResponseEntity.ok(matchmakingService.processBotMove(gameId, move));
     }
 

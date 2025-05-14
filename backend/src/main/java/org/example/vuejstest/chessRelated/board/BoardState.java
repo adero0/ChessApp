@@ -9,8 +9,7 @@ import org.example.vuejstest.chessRelated.util.BinaryStringToChessPos;
 
 import java.util.Map;
 
-import static org.example.vuejstest.chessRelated.enums.PieceType.KING;
-import static org.example.vuejstest.chessRelated.enums.PieceType.PAWN;
+import static org.example.vuejstest.chessRelated.enums.PieceType.*;
 
 public class BoardState {
     private final Pieces pieces;
@@ -250,6 +249,7 @@ public class BoardState {
     }
 
     public void makeMove(int from, int to, PieceType pieceType, PieceColor pieceColor) {
+        boolean promotionFlag = false;
         long colorBitboard = getColorBitboard(pieceColor);
         Piece piece = pieceMap.get(pieceType);
         long pieceBitboard;
@@ -271,10 +271,12 @@ public class BoardState {
                 enPassantSquare = to + ((from - to) / 2);
             }
             int promotionRank = pieceColor == PieceColor.WHITE ? 7 : 0;
-            if (to / 8 == promotionRank) {
-                //perhaps move this somewhere else, or add return; here
-                promoteToQueen((Pawn) piece, to, pieceColor);
-            }
+
+//            if (to / 8 == promotionRank) {
+//                //perhaps move this somewhere else, or add return; here
+//                promoteToQueen((Pawn) piece, to, pieceColor);
+//                promotionFlag = true;
+//            }
         } else {
             pieceBitboard = piece.getBitboard();
             enPassantSquare = -1;
@@ -309,13 +311,19 @@ public class BoardState {
 
         pieceBitboard &= ~(1L << from);
         pieceBitboard |= 1L << to;
-
         colorBitboard &= ~(1L << from);
         colorBitboard |= 1L << to;
 
-
         setColorBitboard(pieceColor, colorBitboard);
-        setPieceBitboard(piece, pieceBitboard, pieceColor); // this might brake for promotions (mayb not)
+        setPieceBitboard(piece, pieceBitboard, pieceColor); // this might brake for promotions (mayb not) (it does)
+
+        if (pieceType == PieceType.PAWN) {
+            int promotionRank = pieceColor == PieceColor.WHITE ? 7 : 0;
+            if (to / 8 == promotionRank) {
+                promoteToQueen((Pawn) piece, to, pieceColor);
+                promotionFlag = true;
+            }
+        }
 
         // here must check for enemy checks and set a valid flag
         var copyBoardState = new BoardState(this);
@@ -330,7 +338,6 @@ public class BoardState {
         }
         //pawns (bcs it's always the pawns messing it up!!!)
         isEnemyKingChecked(((Pawn) pieceMap.get(PieceType.PAWN)).getColorBitboard(pieceColor), pieceColor, PAWN, copyBoardOperator.blockersApplier, enemyKingSquare);
-
     }
 
     //checking if the enemy is in check and setting an according flag

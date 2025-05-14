@@ -63,12 +63,12 @@ export default {
       difficulties: [
         {
           label: 'Łatwy',
-          value: '3',
+          value: '2',
           description: 'Dobry dla początkujących'
         },
         {
           label: 'Średni',
-          value: '5',
+          value: '4',
           description: 'Ciekawe wyzwanie dla amatorów'
         },
         {
@@ -78,7 +78,7 @@ export default {
         },
         {
           label: 'Mistrz',
-          value: '1',
+          value: '15',
           description: 'Tylko dla najlepszych'
         }
       ],

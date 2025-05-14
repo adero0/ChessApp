@@ -44,6 +44,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/chat/**").hasRole(Role.USER.name())//wywal
                         .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/api/game/queue/**").permitAll()
+                        .requestMatchers("/api/game/bot_game/**").permitAll()
+                        .requestMatchers("/api/game/bot_game/bot_move/**").permitAll()
                         .requestMatchers("/api/game/**").permitAll()// zamienic authenticated na permitAll() jeśli działa dla testu
                         .anyRequest().authenticated()
                 )

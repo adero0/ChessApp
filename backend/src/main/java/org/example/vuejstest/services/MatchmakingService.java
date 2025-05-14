@@ -5,6 +5,7 @@ import org.example.vuejstest.chessRelated.board.BoardState;
 import org.example.vuejstest.chessRelated.enums.CastlingType;
 import org.example.vuejstest.chessRelated.enums.PieceColor;
 import org.example.vuejstest.chessRelated.enums.PieceType;
+import org.example.vuejstest.chessRelated.util.BinaryStringToChessPos;
 import org.example.vuejstest.chessRelated.util.ChessPositionIntoFENFormat;
 import org.example.vuejstest.chessRelated.util.NotationToBitboardConverter;
 import org.example.vuejstest.models.GameSession;
@@ -123,7 +124,7 @@ public class MatchmakingService {
         waitingQueue.remove(userId);
     }
 
-    public MoveResponse processMove(String gameId, Long userId, MoveMade moveRequest) {
+    public Map<String, Object> processMove(String gameId, Long userId, MoveMade moveRequest) {
         GameSession game = getGameSession(gameId);
         if (!game.isPlayersTurn(userId)) {
             throw new RuntimeException("This is not this players' turn");
@@ -133,6 +134,9 @@ public class MatchmakingService {
         var boardState = gameManager.getBoardState();
 
         int enemyKingCheckSquare = -1;
+
+//        System.out.println("Pre-move queens are \n" + BinaryStringToChessPos.bitboardToChessPos(boardState.getPieceMap().get(PieceType.QUEEN).getBitboard()));
+//        System.out.println("Pre-move whites are \n" + BinaryStringToChessPos.bitboardToChessPos(boardState.getColorBitboard(PieceColor.WHITE)));
 
         if (moveRequest.getCastlingType() != CastlingType.NOCASTLE) {
             boardState.castle(moveRequest.getCastlingType(), boardState.getAndChangeCurrentPlayerTurn());
@@ -152,13 +156,14 @@ public class MatchmakingService {
             );
         }
         game.setLastMoveMade(moveRequest);
-        var info = new MoveResponse(
-                legalMoves,
-                gameManager.getCastlingRights(),
-                boardState.getMaterial(),
-                boardState.getEnPassantSquare(),
-                enemyKingCheckSquare,
-                boardState.isCheckmate()
+        var info = Map.ofEntries(
+                Map.entry("legalMoves", legalMoves),
+                Map.entry("castlingRights",gameManager.getCastlingRights()),
+                Map.entry("materialImbalance", boardState.getMaterial()),
+                Map.entry("enPassantSquare",boardState.getEnPassantSquare()),
+                Map.entry("enemyKingInCheck", enemyKingCheckSquare),
+                Map.entry("checkmate", boardState.isCheckmate()),
+                Map.entry("fen", ChessPositionIntoFENFormat.transformIntoFEN(game.getBoardOperator().getBoardState()))
         );
         game.incrementTurnCounter();
         if (game.getTurnCounter() % 2 == 0) {
@@ -168,6 +173,8 @@ public class MatchmakingService {
                 " " + NotationToBitboardConverter.chessPositionIntegerToSquare(moveRequest.getFrom()) +
                         NotationToBitboardConverter.chessPositionIntegerToSquare(moveRequest.getTo())
         );
+//        System.out.println("Post-move queens are \n" + BinaryStringToChessPos.bitboardToChessPos(boardState.getPieceMap().get(PieceType.QUEEN).getBitboard()));
+//        System.out.println("Post-move whites are \n" + BinaryStringToChessPos.bitboardToChessPos(boardState.getColorBitboard(PieceColor.WHITE)));
 
 
         return info;
@@ -239,10 +246,70 @@ public class MatchmakingService {
 
     public Map<String, Object> getBotGameSetup(String gameId, Long userId) {
         GameSession game = getGameSession(gameId);
+        System.out.println(game.getGameId() +" this is the game id");
         return Map.ofEntries(
                 Map.entry("playerColor", game.getPlayerColorFromId(userId)),
                 Map.entry("legalMoves", game.getBoardOperator().getLegalMoves()),
                 Map.entry("fen", ChessPositionIntoFENFormat.transformIntoFEN(game.getBoardOperator().getBoardState()))
         );
+    }
+
+    public Map<String, Object> getBotGameStatus(String gameId, Long userId) {
+        return null;
+    }
+
+    public Map<String, Object> processBotMove(String gameId, MoveMade moveRequest) {
+        GameSession game = getGameSession(gameId);
+        if (!game.isPlayersTurn(-1L)) {
+            throw new RuntimeException("This is not this players' turn");
+        }
+
+        var gameManager = game.getBoardOperator();
+        var boardState = gameManager.getBoardState();
+
+        int enemyKingCheckSquare = -1;
+
+        if (moveRequest.getCastlingType() != CastlingType.NOCASTLE) {
+            boardState.castle(moveRequest.getCastlingType(), boardState.getAndChangeCurrentPlayerTurn());
+        } else {
+            gameManager.getBoardState().makeMove
+                    (
+                            moveRequest.getFrom(),
+                            moveRequest.getTo(),
+                            PieceType.getPieceTypeFromSingleLetterString(moveRequest.getPiece()),
+                            boardState.getAndChangeCurrentPlayerTurn()
+                    );
+        }
+        var legalMoves = gameManager.getLegalMoves();
+        if (boardState.isKingInCheck()) {
+            enemyKingCheckSquare = Long.numberOfTrailingZeros(
+                    boardState.getColorBitboard(boardState.getCurrentPlayerTurn()) & boardState.getPieceMap().get(PieceType.KING).getBitboard()
+            );
+        }
+        game.setLastMoveMade(moveRequest);
+        var info = Map.ofEntries(
+                Map.entry("legalMoves", legalMoves),
+                Map.entry("castlingRights",gameManager.getCastlingRights()),
+                Map.entry("materialImbalance", boardState.getMaterial()),
+                Map.entry("enPassantSquare",boardState.getEnPassantSquare()),
+                Map.entry("enemyKingInCheck", enemyKingCheckSquare),
+                Map.entry("checkmate", boardState.isCheckmate()),
+                Map.entry("fen", ChessPositionIntoFENFormat.transformIntoFEN(game.getBoardOperator().getBoardState())),
+                Map.entry("pgn", game.getPgnNotation())
+        );
+        game.incrementTurnCounter();
+        if (game.getTurnCounter() % 2 == 0) {
+            game.updatePgnNotation("\n " + game.getTurnCounter() / 2 + ". ");
+        }
+        game.updatePgnNotation(
+                " " + NotationToBitboardConverter.chessPositionIntegerToSquare(moveRequest.getFrom()) +
+                        NotationToBitboardConverter.chessPositionIntegerToSquare(moveRequest.getTo())
+        );
+        System.out.println(legalMoves);
+        System.out.println(boardState.isCheckmate() + " this is checkmate actually");
+        System.out.println(boardState.getMaterial() + " this is material actually");
+
+
+        return info;
     }
 }

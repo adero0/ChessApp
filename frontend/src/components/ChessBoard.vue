@@ -4,10 +4,10 @@
 <!--    <div>Playing as: {{ playerColor }}</div>-->
 <!--    <div>Opponent: {{ opponentUsername }}</div>-->
 <!--    <div>Current turn: {{ currentTurn }}</div>-->
-    <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>
-    <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>
-    <div class="flex items-center justify-center">Material: {{ materialCount }}</div>
-    <div class="flex items-center justify-center"><button class="w-full max-w-xs break-words text-center px-4 py-2" @click="copyPgnToClipboard">{{ pgn }}</button></div>
+<!--    <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>-->
+<!--    <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>-->
+<!--    <div class="flex items-center justify-center">Material: {{ materialCount }}</div>-->
+    <div class="xddd flex items-center justify-center overflow-y-hidden whitespace-pre-wrap max-h-50 "><button class="w-full max-w-xs break-words text-center px-4 py-2 flex-wrap" @click="copyPgnToClipboard">{{ pgn }}</button></div>
   </div>
 
   <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
@@ -81,8 +81,8 @@ const CastlingType = {
 export default {
   mounted() {
     this.gameId = this.$route.query.gameId;
-    const isBotGame = this.$route.path.includes('/bot_game');
-    if(isBotGame) {
+    this.isBotGame = this.$route.path.includes('/bot_game');
+    if(this.isBotGame) {
       this.difficulty = this.$route.query.difficulty;
       this.getLegalsOrMakeBotMove();
     }
@@ -198,60 +198,81 @@ export default {
     },
     chessPositionSquareToInteger(square_character) {
       let number = 104 - square_character.charCodeAt(0);
-      number += ( square_character.charAt(1) - 1 ) * 8 - 1
+      number += ( square_character.charAt(1) - 1 ) * 8;
       return number;
     },
-    async fetchBoard() {
-      try {
-        const response = await axios.get('http://localhost:8080/api/game/setup');
-        this.fen = response.data;
-      } catch (error) {
-        console.error('Error fetching FEN:', error);
-      }
-    },
+
     beforeUnmount() {
       clearInterval(this.pollInterval);
     },
+
     async getLegalsOrMakeBotMove() {
       try {
         const response = await axios.get(`http://localhost:8080/api/game/bot_game/${this.gameId}/setup`,
-            {
-              headers: {
+            { headers: {
                 Authorization: `Bearer ${this.authStore.token}`
-              }
-            });
-        console.log("im here :)")
+              } }
+        );
+        console.log(response.data);
         this.playerColor = response.data.playerColor;
         this.fen = response.data.fen;
-        if(this.playerColor !== this.currentTurn) {
-          await this.getAndPlayStockfishMove();
+        console.log(response.data.fen);
+        this.localFen = this.fen;// Initialize localFen
+        this.serverFen = this.fen; // Initialize serverFen
+        const fenParts = this.fen.split(' ');
+        this.currentTurn = fenParts[1] === 'w' ? 'WHITE' : 'BLACK';
+        this.isMyTurn = this.currentTurn === this.playerColor;
+        // Parse currentTurn from FEN
+        if (this.playerColor !== this.currentTurn) {
+          await this.getStockfishMoves();
+        } else {
+          this.legalMoves = response.data.legalMoves;
         }
-        // this.legalMoves = Object.entries(response.data).reduce((acc, [key, value]) => {
-        //   acc[parseInt(key)] = value;
-        //   return acc;
-        // }, {});
       } catch (error) {
-        console.error('Error getting legal moves:', error);
+        console.error('Error in bot setup or smth:', error);
+      }
+    },
+    async getStockfishMoves() {
+      try {
+        console.log("Wysyłam botowi taki fen: ", this.serverFen);
+        const botMove = await axios.get('https://stockfish.online/api/s/v2.php', {
+          params: { fen: this.serverFen, depth: this.difficulty }
+        });
+        console.log(botMove.data);
+        const move = botMove.data.bestmove.substring(9, 13);
+        const from = this.chessPositionSquareToInteger(move.substring(0, 2));
+        const to = this.chessPositionSquareToInteger(move.substring(2, 4));
+        console.log(from, " ", to);
+        const response = await axios.post(`http://localhost:8080/api/game/bot_game/bot_move/${this.gameId}/move`, {
+          from: from,
+          to: to,
+          piece: this.getPieceSymbol(from),
+          castlingType: CastlingType.NOCASTLE
+        }, { headers: { Authorization: `Bearer ${this.authStore.token}` } });
+        console.log(response.data);
+        this.serverFen = response.data.fen;
+        this.localFen = response.data.fen;
+        this.fen = response.data.fen;
+        this.turnCounter++;
+        this.pgn = response.data.pgn;
+        this.checkmate = response.data.checkmate;
+        this.lastMove = { from: from, to: to };
+        this.checkSquare = response.data.enemyKingInCheck;
+        this.legalMoves = response.data.legalMoves;
+        this.castlingRights = response.data.castlingRights;
+        this.enPassantSquare = response.data.enPassantSquare;
+        this.highlightedSquares = [];
+        this.materialCount = response.data.materialImbalance;
+        this.currentTurn = (this.currentTurn === "WHITE") ? "BLACK" : "WHITE";
+        this.isMyTurn = true;
+      } catch (error) {
+        console.error('Stockfish move failed:', error);
       }
     },
 
-    async getAndPlayStockfishMove() {
-      await this.getStockfishMoves();
-      console.log("at least smth works")
-    },
-
-    async getStockfishMoves(){
-      try{
-        const response = await axios.get('https://stockfish.online/api/s/v2.php', {
-          params: {
-            fen: this.fen,
-            depth: this.difficulty
-          }});
-        const from = this.chessPositionSquareToInteger(response.data.bestmove.substring(9, 11));
-        const to = this.chessPositionSquareToInteger(response.data.bestmove.substring(11, 13));
-        console.log(from + " " + to);
-      } catch (error) {
-        console.error('Stockfish request failed', error);}
+    getPieceSymbol(square) {
+      const pieceData = this.board.flat().find(s => s.square === square);
+      return pieceData ? pieceData.symbol : '';
     },
 
     handleDragStart(squareData, event) {
@@ -315,10 +336,11 @@ export default {
           headers: {
             Authorization: `Bearer ${this.authStore.token}`
           }});
+        console.log("This is after regular move:", response.data);
         this.serverFen = response.data.fen;
         this.turnCounter++;
 
-        this.checkmate = response.data.isCheckmate;
+        this.checkmate = response.data.checkmate;
         console.log(this.checkmate + " it is in fact this about checkmate");
 
 
@@ -330,6 +352,9 @@ export default {
         this.enPassantSquare = response.data.enPassantSquare;
         this.highlightedSquares = [];
         this.materialCount = response.data.materialImbalance;
+        if(this.isBotGame){
+          await this.getStockfishMoves();
+        }
       } catch (error) {
         console.error('Move failed:', error);
         this.localFen = prevFen;
@@ -480,8 +505,8 @@ export default {
       lastMove: { from: -1, to: -1 },
       checkmate: false,
       gameId: null,
-      playerColor: 'white',
-      currentTurn: 'white',
+      playerColor: 'WHITE',
+      currentTurn: 'WHITE',
       opponentUsername: '',
       pollInterval: null,
       opponentId: null,
@@ -489,6 +514,8 @@ export default {
       serverFen: '',
       isMyTurn: false,
       difficulty: null,
+      isBotGame: false,
+      successeNb: 0,
     }
   },
 
@@ -634,9 +661,21 @@ export default {
 
 .chess-board.flipped .piece {
   transform: rotate(180deg);
+  flex-direction: row;
 }
 
 .rotatore {
   transform: rotate(180deg);
 }
+
+
 </style>
+<!--.xddd {
+  flex-direction: row;
+  display: flex;
+}
+
+.game-info {
+  display: flex;
+  flex-direction: row;
+}-->
