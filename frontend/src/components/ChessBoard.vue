@@ -1,14 +1,6 @@
 <template>
   <div class="chess-container">
-  <div class="game-info">
-<!--    <div>Playing as: {{ playerColor }}</div>-->
-<!--    <div>Opponent: {{ opponentUsername }}</div>-->
-<!--    <div>Current turn: {{ currentTurn }}</div>-->
-<!--    <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>-->
-<!--    <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>-->
-<!--    <div class="flex items-center justify-center">Material: {{ materialCount }}</div>-->
-    <div class="xddd flex items-center justify-center overflow-y-hidden whitespace-pre-wrap max-h-50 "><button class="w-full max-w-xs break-words text-center px-4 py-2 flex-wrap" @click="copyPgnToClipboard">{{ pgn }}</button></div>
-  </div>
+
 
   <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
     <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded" v-bind:class="{'rotatore': playerColor === 'BLACK'}" v-if="isMyTurn"> Twoja kolej!</div>
@@ -43,9 +35,18 @@
       </div>
     </div>
   </div>
+    <div class="game-info">
+      <!--    <div>Playing as: {{ playerColor }}</div>-->
+      <!--    <div>Opponent: {{ opponentUsername }}</div>-->
+      <!--    <div>Current turn: {{ currentTurn }}</div>-->
+      <!--    <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>-->
+      <!--    <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>-->
+      <div class="flex items-center justify-center">Material: {{ materialCount }}</div>
+      <div class="xddd flex items-center justify-center overflow-y-hidden whitespace-pre-wrap max-h-50 "><button class="w-full max-w-xs break-words text-center px-4 py-2 flex-wrap" @click="copyPgnToClipboard">{{ pgn }}</button></div>
+    </div>
   <button
       @click="confirmResignation"
-      class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow hover:shadow-md transition duration-200 flex"
+      class="resign-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow hover:shadow-md transition duration-200 flex"
   >
     Poddaj partię
   </button>
@@ -667,15 +668,4 @@ export default {
 .rotatore {
   transform: rotate(180deg);
 }
-
-
 </style>
-<!--.xddd {
-  flex-direction: row;
-  display: flex;
-}
-
-.game-info {
-  display: flex;
-  flex-direction: row;
-}-->
