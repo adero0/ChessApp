@@ -1,2 +1,2 @@
 This is an online chess platform built as my Bachelor's thesis project. It includes a Java backend for move validation and move suggestions, with all the bitboards set up, as well as a vue3 frontend for the visuals.
- It's a SPA with axios for the REST connectivity. The website handles login and database needs thru postgresql. Feel free to use all the code in here you may need. The engine is NOT written by me, only the move validations.
+ It's a SPA with axios for the REST connectivity. The website handles login and database needs thru postgresql. Feel free to use all the code in here you may need. The engine is NOT written by me, only the move validations. There are plans to build the apps engine soon-ish.
