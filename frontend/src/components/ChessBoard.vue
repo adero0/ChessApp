@@ -1,8 +1,11 @@
 <template>
   <div class="chess-container">
     <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
-      <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded max-w-xs mx-auto"
-           v-bind:class="{'rotatore': playerColor === 'BLACK'}" v-if="isMyTurn"> Twoja kolej!
+      <div class="turn-message-container" :class="{'rotatore': playerColor === 'BLACK'}">
+        <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded max-w-xs mx-auto"
+             v-show="isMyTurn">
+          Twoja kolej!
+        </div>
       </div>
       <div v-for="(row, rowIndex) in board" :key="rowIndex" class="row">
         <div
@@ -156,7 +159,8 @@ export default {
           if (!this.isMyTurn) {
             this.localFen = this.serverFen; // Sync to server state when not our turn
           }
-          this.pgn = status.pgn;
+          // this.pgn = status.pgn; //tutaj
+          this.pgn += status.pgn.substring(status.pgn.indexOf(this.pgn) + this.pgn.length);
 
           if (status.isCheckmate) {
             this.checkmate = status.isCheckmate;
@@ -178,7 +182,7 @@ export default {
         } catch (error) {
           console.error('Error polling game status:', error);
         }
-      }, 2000); // Poll every 2 seconds
+      }, 75); // Poll every 2 seconds
     },
     openSuccessCopyToast() {
       this.$toast.open({
@@ -265,7 +269,8 @@ export default {
         this.localFen = response.data.fen;
         this.fen = response.data.fen;
         this.turnCounter++;
-        this.pgn = response.data.pgn;
+        this.pgn = response.data.pgn; // tutaj
+
         this.checkmate = response.data.checkmate;
         this.lastMove = {from: from, to: to};
         this.checkSquare = response.data.enemyKingInCheck;
@@ -775,5 +780,24 @@ export default {
     margin-right: 0;
     max-width: 100%;
   }
+}
+
+.turn-message-container {
+  min-height: 70px; /* Ta sama wysokość co kwadraty szachownicy */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.turn-message-container > div {
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+
+.turn-message-container > div:not([style*="display: none"]) {
+  visibility: visible;
+  opacity: 1;
 }
 </style>
