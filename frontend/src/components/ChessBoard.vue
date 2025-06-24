@@ -1,55 +1,62 @@
 <template>
   <div class="chess-container">
-
-
-  <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
-    <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded" v-bind:class="{'rotatore': playerColor === 'BLACK'}" v-if="isMyTurn"> Twoja kolej!</div>
-    <div v-if="checkmate" class="game-over-overlay">
-      <div class="game-over-message">GAME OVER</div>
-    </div>
-
-    <div v-for="(row, rowIndex) in board" :key="rowIndex" class="row">
-      <div
-          v-for="(square, colIndex) in row"
-          :key="colIndex"
-          class="square"
-          :class="[
+    <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
+      <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded max-w-xs mx-auto"
+           v-bind:class="{'rotatore': playerColor === 'BLACK'}" v-if="isMyTurn"> Twoja kolej!
+      </div>
+      <div v-for="(row, rowIndex) in board" :key="rowIndex" class="row">
+        <div
+            v-for="(square, colIndex) in row"
+            :key="colIndex"
+            class="square"
+            :class="[
             (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark',
             { 'legal-move': highlightedSquares.includes(square.square) },
             { 'check-square': checkSquare !== -1 && square.square === checkSquare },
             { 'last-move': square.square === lastMove.from || square.square === lastMove.to },
             { 'game-over': checkmate },
           ]"
-          @dragover.prevent
-          @drop="handleDrop($event, square.square)"
-      >
-        <img
-            v-if="!square.isEmpty"
-            :src="pieceImages[square.symbol]"
-            :alt="square.symbol"
-            class="piece"
-            @click="showLegalMoves(square.square)"
-            @dragstart="handleDragStart(square, $event)"
-            @dragend="checkIsLegal($event)"
+            @dragover.prevent
+            @drop="handleDrop($event, square.square)"
         >
+          <img
+              v-if="!square.isEmpty"
+              :src="pieceImages[square.symbol]"
+              :alt="square.symbol"
+              class="piece"
+              @click="showLegalMoves(square.square)"
+              @dragstart="handleDragStart(square, $event)"
+              @dragend="checkIsLegal($event)"
+          >
+        </div>
+      </div>
+      <div v-if="checkmate" class="game-over-overlay" @click.self="checkmate = false">
+        <div class="game-over-modal">
+          <div class="game-over-header">
+            <span v-bind:class="{'rotatore': playerColor === 'BLACK'}" class="game-over-title">GAME OVER</span>
+            <button class="close-button" @click="checkmate = false">&times;</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-    <div class="game-info">
-      <!--    <div>Playing as: {{ playerColor }}</div>-->
-      <!--    <div>Opponent: {{ opponentUsername }}</div>-->
-      <!--    <div>Current turn: {{ currentTurn }}</div>-->
-      <!--    <div class="flex items-center justify-center">Is the game over: {{ checkmate === true ? ' yes' : ' false' }}</div>-->
-      <!--    <div class="flex items-center justify-center">King check square: {{checkSquare}}</div>-->
-      <div class="flex items-center justify-center">Material: {{ materialCount }}</div>
-      <div class="xddd flex items-center justify-center overflow-y-hidden whitespace-pre-wrap max-h-50 "><button class="w-full max-w-xs break-words text-center px-4 py-2 flex-wrap" @click="copyPgnToClipboard">{{ pgn }}</button></div>
+
+    <div class="right-panel">
+      <button
+          @click="confirmResignation"
+          class="resign-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow hover:shadow-md transition duration-200"
+      >
+        Poddaj partię
+      </button>
+      <div class="pgn-container">
+        <button
+            class="pgn-button"
+            @click="copyPgnToClipboard"
+            :class="{ 'scrollable-pgn': pgnLines > 10 }"
+        >
+          {{ pgn }}
+        </button>
+      </div>
     </div>
-  <button
-      @click="confirmResignation"
-      class="resign-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow hover:shadow-md transition duration-200 flex"
-  >
-    Poddaj partię
-  </button>
   </div>
 </template>
 
@@ -83,12 +90,11 @@ export default {
   mounted() {
     this.gameId = this.$route.query.gameId;
     this.isBotGame = this.$route.path.includes('/bot_game');
-    if(this.isBotGame) {
+    if (this.isBotGame) {
       this.difficulty = this.$route.query.difficulty;
       this.getLegalsOrMakeBotMove();
-    }
-    else if (this.gameId) {
-        this.startGamePolling();
+    } else if (this.gameId) {
+      this.startGamePolling();
     } else {
       console.error("this is pretty bad")
     }
@@ -96,7 +102,7 @@ export default {
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
-    return { authStore, router };
+    return {authStore, router};
   },
   methods: {
     confirmResignation() {
@@ -106,24 +112,25 @@ export default {
     },
     resignGame() {
       try {
-        const response = axios.post(`http://localhost:8080/api/game/${this.gameId}/resign`,{},{
+        const response = axios.post(`http://localhost:8080/api/game/${this.gameId}/resign`, {}, {
           headers: {
             Authorization: `Bearer ${this.authStore.token}`
-          }});
-      } catch(error){
+          }
+        });
+      } catch (error) {
         console.log("error in resign", error)
       }
-      },
+    },
     startGamePolling() {
       this.pollInterval = setInterval(async () => {
         try {
           const response = await axios.get(
               `http://localhost:8080/api/game/${this.gameId}/status`,
-          {
-            headers: {
-              Authorization: `Bearer ${this.authStore.token}`
-            }
-          });
+              {
+                headers: {
+                  Authorization: `Bearer ${this.authStore.token}`
+                }
+              });
           const status = response.data;
 
           if (status.lastMove) {
@@ -153,8 +160,9 @@ export default {
 
           if (status.isCheckmate) {
             this.checkmate = status.isCheckmate;
-            this.pgn+='#';
-            clearInterval(this.pollInterval); }
+            this.pgn += '#';
+            clearInterval(this.pollInterval);
+          }
 
 
           this.checkSquare = status.checkSquare;
@@ -184,7 +192,7 @@ export default {
       try {
         await navigator.clipboard.writeText(this.pgn);
         this.openSuccessCopyToast()
-      } catch($e) {
+      } catch ($e) {
         alert('Cannot copy');
       }
     },
@@ -193,13 +201,13 @@ export default {
         throw new Error("Incorrect square value")
       }
       let square_name = ''
-      square_name += String.fromCharCode(((square ^ 7) % 8)+ 97);
+      square_name += String.fromCharCode(((square ^ 7) % 8) + 97);
       square_name += Math.floor(square / 8 + 1);
       return square_name;
     },
     chessPositionSquareToInteger(square_character) {
       let number = 104 - square_character.charCodeAt(0);
-      number += ( square_character.charAt(1) - 1 ) * 8;
+      number += (square_character.charAt(1) - 1) * 8;
       return number;
     },
 
@@ -210,9 +218,11 @@ export default {
     async getLegalsOrMakeBotMove() {
       try {
         const response = await axios.get(`http://localhost:8080/api/game/bot_game/${this.gameId}/setup`,
-            { headers: {
+            {
+              headers: {
                 Authorization: `Bearer ${this.authStore.token}`
-              } }
+              }
+            }
         );
         console.log(response.data);
         this.playerColor = response.data.playerColor;
@@ -237,7 +247,7 @@ export default {
       try {
         console.log("Wysyłam botowi taki fen: ", this.serverFen);
         const botMove = await axios.get('https://stockfish.online/api/s/v2.php', {
-          params: { fen: this.serverFen, depth: this.difficulty }
+          params: {fen: this.serverFen, depth: this.difficulty}
         });
         console.log(botMove.data);
         const move = botMove.data.bestmove.substring(9, 13);
@@ -249,7 +259,7 @@ export default {
           to: to,
           piece: this.getPieceSymbol(from),
           castlingType: CastlingType.NOCASTLE
-        }, { headers: { Authorization: `Bearer ${this.authStore.token}` } });
+        }, {headers: {Authorization: `Bearer ${this.authStore.token}`}});
         console.log(response.data);
         this.serverFen = response.data.fen;
         this.localFen = response.data.fen;
@@ -257,7 +267,7 @@ export default {
         this.turnCounter++;
         this.pgn = response.data.pgn;
         this.checkmate = response.data.checkmate;
-        this.lastMove = { from: from, to: to };
+        this.lastMove = {from: from, to: to};
         this.checkSquare = response.data.enemyKingInCheck;
         this.legalMoves = response.data.legalMoves;
         this.castlingRights = response.data.castlingRights;
@@ -330,13 +340,14 @@ export default {
       try {
         const response = await axios.post(`http://localhost:8080/api/game/${this.gameId}/move`, {
           from: dragInfo.from,
-              to: targetSquare,
-              piece: dragInfo.piece,
-              castlingType: castlingType
+          to: targetSquare,
+          piece: dragInfo.piece,
+          castlingType: castlingType
         }, {
           headers: {
             Authorization: `Bearer ${this.authStore.token}`
-          }});
+          }
+        });
         console.log("This is after regular move:", response.data);
         this.serverFen = response.data.fen;
         this.turnCounter++;
@@ -345,7 +356,7 @@ export default {
         console.log(this.checkmate + " it is in fact this about checkmate");
 
 
-        this.lastMove = { from: dragInfo.from, to: targetSquare };
+        this.lastMove = {from: dragInfo.from, to: targetSquare};
 
         this.checkSquare = response.data.enemyKingInCheck;
         this.legalMoves = response.data.legalMoves;
@@ -353,7 +364,7 @@ export default {
         this.enPassantSquare = response.data.enPassantSquare;
         this.highlightedSquares = [];
         this.materialCount = response.data.materialImbalance;
-        if(this.isBotGame){
+        if (this.isBotGame) {
           await this.getStockfishMoves();
         }
       } catch (error) {
@@ -412,13 +423,12 @@ export default {
       // supposed pawn promotion
       if (piece === 'P' && toRank === 0) {
         ranks[toRank][toFile] = 'Q'; // Promote white pawn to queen
-        this.promotionPgnAnnotation='Q';
+        this.promotionPgnAnnotation = 'Q';
       } else if (piece === 'p' && toRank === 7) {
         ranks[toRank][toFile] = 'q'; // Promote black pawn to queen
-        this.promotionPgnAnnotation='q';
-      }
-      else {
-        this.promotionPgnAnnotation='';
+        this.promotionPgnAnnotation = 'q';
+      } else {
+        this.promotionPgnAnnotation = '';
       }
 
       // Rebuild FEN
@@ -503,7 +513,7 @@ export default {
       turnCounter: 1,
       promotionPgnAnnotation: '',
       checkSquare: -1,
-      lastMove: { from: -1, to: -1 },
+      lastMove: {from: -1, to: -1},
       checkmate: false,
       gameId: null,
       playerColor: 'WHITE',
@@ -521,6 +531,9 @@ export default {
   },
 
   computed: {
+    pgnLines() {
+      return (this.pgn.match(/\n/g) || []).length;
+    },
     board() {
       const whichFen = this.isMyTurn ? this.localFen : this.serverFen;
       try {
@@ -545,6 +558,13 @@ export default {
 </script>
 
 <style scoped>
+.chess-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  gap: 20px;
+}
+
 .game-over-overlay {
   position: fixed;
   top: 0;
@@ -557,19 +577,27 @@ export default {
   align-items: center;
   z-index: 1000;
 }
-.game-over-message {
 
+.game-over-message {
   color: white;
   font-size: 5rem;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   animation: pulse 2s infinite;
 }
+
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
+
 .game-over.flipped {
   pointer-events: none;
   transform: rotate(180deg);
@@ -598,11 +626,74 @@ export default {
 }
 
 .chess-board {
-  border: 2px solid #555;
-  display: inline-block;
+  flex: 1;
+  max-width: 800px;
   position: relative;
-  left: 35%;
-  z-index: 1;
+  margin-right: 20px;
+  background: transparent;
+}
+
+.right-panel {
+  width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.game-over-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.game-over-modal {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.game-over-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.close-button {
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #333;
+}
+
+.pgn-container {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.pgn-button {
+  width: 100%;
+  padding: 10px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  text-align: left;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.scrollable-pgn {
+  overflow-y: auto;
 }
 
 .row {
@@ -610,8 +701,8 @@ export default {
 }
 
 .square {
-  width: 50px;
-  height: 50px;
+  width: 70px;
+  height: 70px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -629,10 +720,11 @@ export default {
 .piece {
   position: relative;
   z-index: 1;
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   user-select: none;
   pointer-events: auto;
+  transition: transform 0.3s;
 }
 
 .legal-move::after {
@@ -667,5 +759,21 @@ export default {
 
 .rotatore {
   transform: rotate(180deg);
+}
+
+@media (max-width: 1200px) {
+  .chess-container {
+    flex-direction: column;
+  }
+
+  .right-panel {
+    width: 100%;
+    order: -1;
+  }
+
+  .chess-board {
+    margin-right: 0;
+    max-width: 100%;
+  }
 }
 </style>

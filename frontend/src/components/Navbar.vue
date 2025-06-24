@@ -14,7 +14,7 @@
         <router-link v-if="!authStore.isLoggedIn" to="/register" class="text-gray-300 hover:text-white transition">
           Zarejestruj się
         </router-link>
-        <router-link v-if="authStore.isLoggedIn" to="/game" class="text-gray-300 hover:text-white transition"> Test </router-link>
+<!--        <router-link v-if="authStore.isLoggedIn" to="/game" class="text-gray-300 hover:text-white transition"> Graj </router-link>-->
         <button v-if="authStore.isLoggedIn" @click="logout" class="text-gray-300 hover:text-white transition">
           Wyloguj się
         </button>

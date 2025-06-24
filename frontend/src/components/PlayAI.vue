@@ -46,7 +46,7 @@
       </div>
     </div>
     <button class="play-button" @click="handlePlay">Play Game</button>
-    <label>{{selectedColor}}</label>
+<!--    <label>{{selectedColor}}</label>-->
   </div>
 </template>
 

@@ -6,7 +6,7 @@
           <router-link to="/play" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mb-2">
             Na gracza
           </router-link>
-          <span>😎</span>
+          <span>👤</span>
         </div>
         <div class="flex flex-col items-center">
           <router-link to="/playAI" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mb-2">
