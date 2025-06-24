@@ -1,21 +1,44 @@
 <template>
-  <nav class="bg-gray-800 p-4 shadow-md">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <div class="text-white text-2xl font-bold">
-        <router-link v-if="authStore.isLoggedIn" to="/main">Szacher</router-link>
-        <router-link v-if="!authStore.isLoggedIn" to="/">Szacher</router-link>
+  <nav class="bg-gray-900 border-b border-gray-700 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Logo -->
+      <div class="text-white text-2xl font-extrabold tracking-wide">
+        <router-link v-if="authStore.isLoggedIn" to="/main" class="hover:text-emerald-400 transition">
+          Szacher
+        </router-link>
+        <router-link v-if="!authStore.isLoggedIn" to="/" class="hover:text-emerald-400 transition">
+          Szacher
+        </router-link>
       </div>
-      <div><p v-if="authStore.isLoggedIn" class="text-white"> Witaj, {{authStore.username}}!</p></div>
-      <div class="space-x-4">
 
-        <router-link v-if="!authStore.isLoggedIn" to="/login" class="text-gray-300 hover:text-white transition">
+      <!-- Powitanie -->
+      <div class="hidden sm:block">
+        <p v-if="authStore.isLoggedIn" class="text-gray-300 text-sm">
+          Witaj, <span class="text-white font-medium">{{ authStore.username }}</span>!
+        </p>
+      </div>
+
+      <!-- Linki / przyciski -->
+      <div class="flex space-x-4 text-sm">
+        <router-link
+            v-if="!authStore.isLoggedIn"
+            to="/login"
+            class="text-gray-400 hover:text-white transition"
+        >
           Zaloguj się
         </router-link>
-        <router-link v-if="!authStore.isLoggedIn" to="/register" class="text-gray-300 hover:text-white transition">
-          Zarejestruj się
+        <router-link
+            v-if="!authStore.isLoggedIn"
+            to="/register"
+            class="text-gray-400 hover:text-white transition"
+        >
+          Rejestracja
         </router-link>
-<!--        <router-link v-if="authStore.isLoggedIn" to="/game" class="text-gray-300 hover:text-white transition"> Graj </router-link>-->
-        <button v-if="authStore.isLoggedIn" @click="logout" class="text-gray-300 hover:text-white transition">
+        <button
+            v-if="authStore.isLoggedIn"
+            @click="logout"
+            class="text-red-400 hover:text-red-300 transition"
+        >
           Wyloguj się
         </button>
       </div>
@@ -30,11 +53,11 @@ import { useRouter } from 'vue-router';
 export default {
   setup() {
     const authStore = useAuthStore();
-    const router = useRouter(); // Get router instance
+    const router = useRouter();
 
     const logout = () => {
-      authStore.setUserData(null,null); // Clear token
-      router.push('/'); // Redirect to guest page
+      authStore.setUserData(null, null);
+      router.push('/');
     };
 
     return {
