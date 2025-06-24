@@ -1,63 +1,72 @@
 <template>
-  <div class="chess-container">
-    <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
-      <div class="turn-message-container" :class="{'rotatore': playerColor === 'BLACK'}">
-        <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded max-w-xs mx-auto"
-             v-show="isMyTurn">
-          Twoja kolej!
-        </div>
-      </div>
-      <div v-for="(row, rowIndex) in board" :key="rowIndex" class="row">
-        <div
-            v-for="(square, colIndex) in row"
-            :key="colIndex"
-            class="square"
-            :class="[
-            (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark',
-            { 'legal-move': highlightedSquares.includes(square.square) },
-            { 'check-square': checkSquare !== -1 && square.square === checkSquare },
-            { 'last-move': square.square === lastMove.from || square.square === lastMove.to },
-            { 'game-over': checkmate },
-          ]"
-            @dragover.prevent
-            @drop="handleDrop($event, square.square)"
-        >
-          <img
-              v-if="!square.isEmpty"
-              :src="pieceImages[square.symbol]"
-              :alt="square.symbol"
-              class="piece"
-              @click="showLegalMoves(square.square)"
-              @dragstart="handleDragStart(square, $event)"
-              @dragend="checkIsLegal($event)"
-          >
-        </div>
-      </div>
-      <div v-if="checkmate" class="game-over-overlay" @click.self="checkmate = false">
-        <div class="game-over-modal">
-          <div class="game-over-header">
-            <span v-bind:class="{'rotatore': playerColor === 'BLACK'}" class="game-over-title">GAME OVER</span>
-            <button class="close-button" @click="checkmate = false">&times;</button>
+  <div class="app-root">
+    <div class="chess-container">
+      <div class="chess-board" :class="{'flipped': playerColor === 'BLACK' }">
+        <div class="turn-message-container" :class="{'rotatore': playerColor === 'BLACK'}">
+          <div class="bg-green-600 bg-opacity-70 text-white p-4 rounded max-w-xs mx-auto"
+               v-show="isMyTurn">
+            Twoja kolej!
           </div>
+        </div>
+        <div v-for="(row, rowIndex) in board" :key="rowIndex" class="row">
+          <div
+              v-for="(square, colIndex) in row"
+              :key="colIndex"
+              class="square"
+              :class="[
+                (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark',
+                { 'legal-move': highlightedSquares.includes(square.square) },
+                { 'check-square': checkSquare !== -1 && square.square === checkSquare },
+                { 'last-move': square.square === lastMove.from || square.square === lastMove.to },
+                { 'game-over': checkmate },
+              ]"
+              @dragover.prevent="!gameOver"
+              @drop="!gameOver ? handleDrop($event, square.square) : null"
+          >
+            <img
+                v-if="!square.isEmpty"
+                :src="pieceImages[square.symbol]"
+                :alt="square.symbol"
+                class="piece"
+                :class="{'opacity-70': gameOver}"
+                @click="!gameOver ? showLegalMoves(square.square) : null"
+                @dragstart="!gameOver ? handleDragStart(square, $event) : null"
+                @dragend="checkIsLegal($event)"
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <button
+            v-if="!gameOver"
+            @click="confirmResignation"
+            class="resign-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow hover:shadow-md transition duration-200"
+        >
+          Poddaj partię
+        </button>
+        <div class="pgn-container">
+          <button
+              class="pgn-button"
+              @click="copyPgnToClipboard"
+              :class="{ 'scrollable-pgn': pgnLines > 10 }"
+          >
+            {{ pgn }}
+          </button>
         </div>
       </div>
     </div>
 
-    <div class="right-panel">
-      <button
-          @click="confirmResignation"
-          class="resign-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow hover:shadow-md transition duration-200"
-      >
-        Poddaj partię
-      </button>
-      <div class="pgn-container">
-        <button
-            class="pgn-button"
-            @click="copyPgnToClipboard"
-            :class="{ 'scrollable-pgn': pgnLines > 10 }"
-        >
-          {{ pgn }}
-        </button>
+    <!-- Game Over Modal - Now outside chess-container -->
+    <div v-if="checkmate" class="game-over-overlay" @click.self="checkmate = false">
+      <div class="game-over-modal">
+        <div class="game-over-header">
+          <span class="game-over-title">GAME OVER</span>
+          <button class="close-button" @click="checkmate = false">&times;</button>
+        </div>
+        <div v-if="resignation" class="resignation-message">
+          Partia zakończona przez poddanie
+        </div>
       </div>
     </div>
   </div>
@@ -115,10 +124,14 @@ export default {
     },
     resignGame() {
       try {
-        const response = axios.post(`http://localhost:8080/api/game/${this.gameId}/resign`, {}, {
+        axios.post(`http://localhost:8080/api/game/${this.gameId}/resign`, {}, {
           headers: {
             Authorization: `Bearer ${this.authStore.token}`
           }
+        }).then(() => {
+          this.checkmate = true;
+          this.gameOver = true;
+          this.resignation = true;
         });
       } catch (error) {
         console.log("error in resign", error)
@@ -164,6 +177,7 @@ export default {
 
           if (status.isCheckmate) {
             this.checkmate = status.isCheckmate;
+            this.gameOver = true;
             this.pgn += '#';
             clearInterval(this.pollInterval);
           }
@@ -272,6 +286,7 @@ export default {
         this.pgn = response.data.pgn; // tutaj
 
         this.checkmate = response.data.checkmate;
+        this.gameOver = this.checkmate;
         this.lastMove = {from: from, to: to};
         this.checkSquare = response.data.enemyKingInCheck;
         this.legalMoves = response.data.legalMoves;
@@ -292,7 +307,7 @@ export default {
     },
 
     handleDragStart(squareData, event) {
-      if (this.checkmate) {
+      if (this.checkmate || this.gameOver) {
         event.preventDefault();
         return;
       }
@@ -318,7 +333,7 @@ export default {
     },
 
     async handleDrop(event, targetSquare) {
-      if (!this.isMyTurn) {
+      if (!this.isMyTurn || this.gameOver) {
         event.preventDefault();
         return;
       }
@@ -358,6 +373,7 @@ export default {
         this.turnCounter++;
 
         this.checkmate = response.data.checkmate;
+        this.gameOver = this.checkmate;
         console.log(this.checkmate + " it is in fact this about checkmate");
 
 
@@ -463,7 +479,7 @@ export default {
     },
 
     showLegalMoves(square) {
-      if (!this.isMyTurn) {
+      if (!this.isMyTurn || this.gameOver) {
         this.highlightedSquares = [];
         return;
       }
@@ -532,6 +548,8 @@ export default {
       difficulty: null,
       isBotGame: false,
       successeNb: 0,
+      gameOver: false,
+      resignation: false
     }
   },
 
@@ -563,49 +581,15 @@ export default {
 </script>
 
 <style scoped>
+.app-root {
+  position: relative;
+}
+
 .chess-container {
   display: flex;
   justify-content: space-between;
   padding: 20px;
   gap: 20px;
-}
-
-.game-over-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.game-over-message {
-  color: white;
-  font-size: 5rem;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.game-over.flipped {
-  pointer-events: none;
-  transform: rotate(180deg);
 }
 
 .last-move::after {
@@ -645,13 +629,14 @@ export default {
   gap: 20px;
 }
 
+/* UPDATED GAME OVER STYLES */
 .game-over-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -799,5 +784,16 @@ export default {
 .turn-message-container > div:not([style*="display: none"]) {
   visibility: visible;
   opacity: 1;
+}
+
+.resignation-message {
+  padding: 10px;
+  text-align: center;
+  font-weight: bold;
+  color: #d32f2f;
+}
+
+.opacity-70 {
+  opacity: 0.7;
 }
 </style>
