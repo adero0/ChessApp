@@ -8,21 +8,43 @@
     </p>
     <div class="flex gap-6 animate-fade-in delay-300">
       <router-link
+          v-if="!authStore.isLoggedIn"
           to="/login"
           class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-transform transform hover:scale-105"
       >
         Zaloguj się
       </router-link>
       <router-link
+          v-if="!authStore.isLoggedIn"
           to="/register"
           class="bg-purple-500 hover:bg-purple-600 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-transform transform hover:scale-105"
       >
         Rejestracja
       </router-link>
+      <router-link
+          v-if="authStore.isLoggedIn"
+          to="/main"
+          class="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition-transform transform hover:scale-105"
+      >
+        Graj!
+      </router-link>
     </div>
   </div>
 </template>
+<script>
+import { useAuthStore } from '../stores/auth';
+import { useRouter } from 'vue-router';
 
+export default {
+  setup(){
+    const authStore = useAuthStore();
+
+    return{
+      authStore
+    }
+  }
+}
+</script>
 <style scoped>
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

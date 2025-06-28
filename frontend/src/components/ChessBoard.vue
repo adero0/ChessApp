@@ -124,14 +124,14 @@ export default {
     },
     resignGame() {
       try {
+        this.checkmate = true;
+        this.gameOver = true;
+        this.resignation = true;
         axios.post(`http://localhost:8080/api/game/${this.gameId}/resign`, {}, {
           headers: {
             Authorization: `Bearer ${this.authStore.token}`
           }
         }).then(() => {
-          this.checkmate = true;
-          this.gameOver = true;
-          this.resignation = true;
         });
       } catch (error) {
         console.log("error in resign", error)
@@ -583,107 +583,40 @@ export default {
 <style scoped>
 .app-root {
   position: relative;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #1e293b; /* ciemne tło całej aplikacji */
+  color: #f8fafc;
+  min-height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
 .chess-container {
   display: flex;
   justify-content: space-between;
-  padding: 20px;
-  gap: 20px;
-}
-
-.last-move::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(255, 255, 0, 0.3);
-  z-index: 0;
-}
-
-.check-square::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(255, 0, 0, 0.5);
-  z-index: 0;
+  gap: 1.25rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
 }
 
 .chess-board {
   flex: 1;
   max-width: 800px;
+  background: linear-gradient(145deg, #f0d9b5, #b58863);
+  border-radius: 16px;
+  box-shadow:
+      0 8px 15px rgba(0, 0, 0, 0.25),
+      inset 0 0 30px rgba(255, 255, 255, 0.15);
+  padding: 12px;
+  user-select: none;
   position: relative;
-  margin-right: 20px;
-  background: transparent;
+  transition: transform 0.6s ease;
+
 }
 
-.right-panel {
-  width: 500px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* UPDATED GAME OVER STYLES */
-.game-over-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.game-over-modal {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  width: 300px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-  position: relative;
-}
-
-.game-over-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.close-button {
-  font-size: 24px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #333;
-}
-
-.pgn-container {
-  flex-grow: 1;
-  overflow: hidden;
-}
-
-.pgn-button {
-  width: 100%;
-  padding: 10px;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-  text-align: left;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.scrollable-pgn {
-  overflow-y: auto;
+.chess-board.flipped {
+  transform: rotate(180deg);
 }
 
 .row {
@@ -693,10 +626,14 @@ export default {
 .square {
   width: 70px;
   height: 70px;
+  position: relative;
+  cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
-  position: relative;
+  transition: background-color 0.3s ease;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.2);
+  /* Brak zaokrągleń - pola są kwadratowe */
 }
 
 .light {
@@ -707,14 +644,12 @@ export default {
   background-color: #b58863;
 }
 
-.piece {
-  position: relative;
-  z-index: 1;
-  width: 60px;
-  height: 60px;
-  user-select: none;
-  pointer-events: auto;
-  transition: transform 0.3s;
+.square:hover:not(.legal-move):not(.last-move):not(.check-square) {
+  filter: brightness(1.1);
+  box-shadow: 0 0 12px 3px rgba(255, 255, 255, 0.3);
+  transition: box-shadow 0.3s ease, filter 0.3s ease;
+  z-index: 10;
+  pointer-events: none;
 }
 
 .legal-move::after {
@@ -727,73 +662,287 @@ export default {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 1;
+  z-index: 2; /* wyżej niż last-move */
+  pointer-events: none;
+  box-shadow: none;
+  animation: none;
 }
 
-.chess-board.flipped {
-  transform: rotate(180deg);
+@keyframes pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0.6;
+  }
 }
 
-.chess-board.flipped .row {
-  //flex-direction: row-reverse;
+.check-square::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 0, 0, 0.5);
+  /* Brak zaokrągleń, overlay kwadratowy */
+  z-index: 0;
+  box-shadow: none;
+  animation: none;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+@keyframes glowRed {
+  from { box-shadow: 0 0 15px 4px rgba(220, 38, 38, 0.8); }
+  to { box-shadow: 0 0 25px 8px rgba(220, 38, 38, 1); }
+}
+
+.last-move {
+  position: relative;
+  box-shadow: inset 0 0 12px 4px rgba(255, 255, 0, 0.3);
+  /* Brak zaokrągleń */
+  transition: box-shadow 0.4s ease;
+}
+
+.last-move::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 255, 0, 0.4);
+  z-index: 1; /* niżej niż legal-move */
+  pointer-events: none !important;
+  box-shadow: none;
+  animation: none;
 }
 
 .piece {
-  transition: transform 0.3s;
+  width: 60px;
+  height: 60px;
+  user-select: none;
+  pointer-events: auto;
+  transition: transform 0.35s ease, filter 0.3s ease;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  border-radius: 8px;
+  will-change: transform;
+  animation: fadeInScale 0.3s ease forwards;
+  cursor: grab;
+}
+
+.piece.opacity-70 {
+  filter: grayscale(80%) brightness(0.7) drop-shadow(0 0 2px rgba(0,0,0,0.3));
+  cursor: default;
 }
 
 .chess-board.flipped .piece {
-  transform: rotate(180deg);
-  flex-direction: row;
+  transform: rotate(180deg) !important;
+  cursor: grab;
 }
 
-.rotatore {
-  transform: rotate(180deg);
-}
 
-@media (max-width: 1200px) {
-  .chess-container {
-    flex-direction: column;
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
   }
-
-  .right-panel {
-    width: 100%;
-    order: -1;
-  }
-
-  .chess-board {
-    margin-right: 0;
-    max-width: 100%;
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
 .turn-message-container {
-  min-height: 70px; /* Ta sama wysokość co kwadraty szachownicy */
+  min-height: 70px;
   display: flex;
   justify-content: center;
   align-items: center;
   margin-bottom: 10px;
   position: relative;
+  z-index: 5;
+}
+
+.turn-message-container.rotatore {
+  transform: rotate(180deg);
 }
 
 .turn-message-container > div {
+  background-color: rgba(22, 163, 74, 0.8);
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+  box-shadow: 0 8px 15px rgba(22, 163, 74, 0.5);
   transition: all 0.3s ease;
-  opacity: 1;
 }
 
-.turn-message-container > div:not([style*="display: none"]) {
-  visibility: visible;
-  opacity: 1;
+.right-panel {
+  width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  color: #e2e8f0;
+  user-select: text;
+}
+
+.resign-button {
+  background-color: #dc2626;
+  color: white;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 6px 10px rgba(220, 38, 38, 0.6);
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+  border: none;
+  outline-offset: 3px;
+}
+
+.resign-button:hover {
+  background-color: #b91c1c;
+  box-shadow: 0 8px 15px rgba(185, 28, 28, 0.7);
+}
+
+.resign-button:active {
+  background-color: #7f1d1d;
+  box-shadow: 0 4px 6px rgba(127, 29, 29, 0.7);
+  transform: scale(0.97);
+}
+
+.pgn-container {
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid #475569;
+  border-radius: 12px;
+  background: #334155;
+  padding: 1rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  color: #f1f5f9;
+  box-shadow: inset 0 0 15px rgba(255,255,255,0.05);
+}
+
+.pgn-button {
+  width: 100%;
+  white-space: pre-wrap;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: inherit;
+  outline: none;
+  user-select: text;
+  transition: color 0.3s ease;
+}
+
+.pgn-button:hover {
+  color: #a3bffa;
+}
+
+.scrollable-pgn {
+  overflow-y: auto;
+}
+
+/* Game Over Modal */
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.35s ease forwards;
+}
+
+.game-over-modal {
+  background: #f9fafb;
+  padding: 2rem 2.5rem;
+  border-radius: 16px;
+  max-width: 360px;
+  width: 90%;
+  box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.25),
+      inset 0 0 30px rgba(255, 255, 255, 0.6);
+  position: relative;
+  text-align: center;
+  font-weight: 600;
+  color: #111827;
+  user-select: none;
+  transform: scale(0.95);
+  animation: scaleUp 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0.7; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.game-over-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.game-over-title {
+  color: #ef4444;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  user-select: none;
+}
+
+.close-button {
+  font-size: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 0.3rem;
+  transition: color 0.3s ease;
+}
+
+.close-button:hover {
+  color: #b91c1c;
 }
 
 .resignation-message {
-  padding: 10px;
-  text-align: center;
-  font-weight: bold;
-  color: #d32f2f;
+  color: #b91c1c;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
-.opacity-70 {
-  opacity: 0.7;
+/* Responsive */
+@media (max-width: 1200px) {
+  .chess-container {
+    flex-direction: column;
+    max-width: 100%;
+  }
+  .right-panel {
+    width: 100%;
+    order: -1;
+  }
+  .chess-board {
+    max-width: 100%;
+    margin-right: 0;
+  }
 }
 </style>
+
+.square.last-move.legal-move::after {
+width: 8px;
+height: 8px;
+z-index: 2;
+pointer-events: none;
+}
